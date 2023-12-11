@@ -41,6 +41,13 @@ pub fn extract_bodystructure(origin_vec: &Vec<u8>) -> Vec<u8> {
     bodystructure
 }
 
+mod sequence_number;
+
+// Get new SequenceNumbers
+pub fn get_new_sequence_number() -> sequence_number::SequenceNumbers {
+    sequence_number::SequenceNumbers::new()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
