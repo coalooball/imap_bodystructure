@@ -1,10 +1,10 @@
 [package]
 name = "imap_bodystructure"
-version = "0.1.0"
+version = "0.1.1"
 license = "MIT OR Apache-2.0"
 edition = "2021"
-description = "The library for parsing various data formats in Rust, based on Nom."
-repository = "https://github.com/coalooball/glot"
+description = "Analyzing the BODYSTRUCTURE data stream within the IMAP protocol, based on Nom."
+repository = "https://github.com/coalooball/imap_bodystructure"
 readme = "README.md"
 
 [dependencies]
