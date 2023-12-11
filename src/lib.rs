@@ -1,8 +1,8 @@
 //! # IMAP protocol library only related to BODYSTRUCTURE
 //! 
-//! ### Example
+//! ### Examples
+//! Extract BODYSTRUCTURE
 //! ```rust
-//! // Run 'cargo add imap-types' in your project's root directory.
 //! use imap_bodystructure::extract_bodystructure;
 //! fn main() {
 //!     let target = br#"BODYSTRUCTURE (("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL)"#;
@@ -14,6 +14,12 @@
 //!     let bodystructure = extract_bodystructure(&text.to_vec());
 //!     assert_eq!(bodystructure, target);
 //! }
+//! ```
+//! Parse BODYSTRUCTURE
+//! ```rust
+//! # use imap_bodystructure::parser::parse;
+//!  assert_eq!(parse(br#"BODYSTRUCTURE (("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL)"#), 
+//!  Ok((br#" (("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL)"#.as_ref(), b"BODYSTRUCTURE".as_ref())));
 //! ```
 
 fn ascii_lowercase_equal(vec1: &[u8], vec2: &[u8]) -> bool {
@@ -59,12 +65,9 @@ pub fn extract_bodystructure(origin_vec: &Vec<u8>) -> Vec<u8> {
     bodystructure
 }
 
-mod sequence_number;
-
+pub mod parser;
 // Get new SequenceNumbers
-pub fn get_new_sequence_number() -> sequence_number::SequenceNumbers {
-    sequence_number::SequenceNumbers::new()
-}
+pub mod sequence_number;
 
 #[cfg(test)]
 mod tests {
