@@ -1,5 +1,6 @@
 pub use nom::IResult;
 use nom::{
+    branch::alt,
     bytes::complete::{tag, tag_no_case, take_till},
     combinator::map,
     multi::{many1, separated_list1},
@@ -90,7 +91,7 @@ pub struct ContentTypeHeaderField<'a> {
 }
 
 impl ContentTypeHeaderField<'_> {
-    fn get_text(&self) -> Vec<u8> {
+    pub fn get_text(&self) -> Vec<u8> {
         let mut result = b"Content-Type: ".to_vec();
         result.append(&mut self.ttype.get_content_type_text());
         for param in &self.parameters.list {
@@ -116,6 +117,20 @@ pub fn content_type_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentTypeH
             parameters: params,
         },
     )(s)
+}
+#[derive(Debug, PartialEq)]
+pub struct ContentIDHeaderField<'a> {
+    value: Option<&'a [u8]>,
+}
+
+pub fn content_id_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentIDHeaderField> {
+    map(alt((tag_no_case(b"NIL"), double_quoted_string)), |val| {
+        if val.to_ascii_lowercase() == b"nil" {
+            ContentIDHeaderField { value: None }
+        } else {
+            ContentIDHeaderField { value: Some(val) }
+        }
+    })(s)
 }
 
 #[cfg(test)]
@@ -208,7 +223,9 @@ mod tests {
     #[test]
     fn test_content_type_header_field_parser_1() {
         assert_eq!(
-            content_type_header_field_parser(br#""text" "html" ("charset" "utf-8")"#).unwrap().1,
+            content_type_header_field_parser(br#""text" "html" ("charset" "utf-8")"#)
+                .unwrap()
+                .1,
             ContentTypeHeaderField {
                 ttype: ContentTypeTypeAndSubType {
                     ttype: b"text",
@@ -225,10 +242,27 @@ mod tests {
     }
     #[test]
     fn test_get_text_1() {
-        let text = content_type_header_field_parser(br#""text" "html" ("charset" "utf-8")"#).unwrap().1;
+        let text = content_type_header_field_parser(br#""text" "html" ("charset" "utf-8")"#)
+            .unwrap()
+            .1;
         assert_eq!(
             text.get_text(),
             b"Content-Type: text/html;\r\n        charset=\"utf-8\"\r\n"
         )
+    }
+    #[test]
+    fn test_content_id_header_field_parser_1() {
+        assert_eq!(
+            content_id_header_field_parser(b"NIL").unwrap().1,
+            ContentIDHeaderField { value: None }
+        );
+        assert_eq!(
+            content_id_header_field_parser(br#""<id42@guppylake.bellcore.com>""#)
+                .unwrap()
+                .1,
+            ContentIDHeaderField {
+                value: Some(b"<id42@guppylake.bellcore.com>")
+            }
+        );
     }
 }
