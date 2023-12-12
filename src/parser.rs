@@ -152,6 +152,18 @@ pub struct ContentDescriptionHeaderField<'a> {
     value: Option<&'a [u8]>,
 }
 
+impl ContentDescriptionHeaderField<'_> {
+    pub fn get_text(&self) -> Option<Vec<u8>> {
+        if let Some(value) = self.value {
+            let mut result = b"Content-Description: ".to_vec();
+            result.append(&mut value.to_vec());
+            result.extend_from_slice(b"\r\n");
+            return Some(result);
+        }
+        None
+    }
+}
+
 pub fn content_description_header_field_parser(
     s: &[u8],
 ) -> IResult<&[u8], ContentDescriptionHeaderField> {
@@ -317,5 +329,12 @@ mod tests {
             .unwrap()
             .1;
         assert_eq!(ci.get_text(), Some(b"Content-ID: <id42@guppylake.bellcore.com>\r\n".to_vec()));
+    }
+    #[test]
+    fn test_content_desc_get_text_1() {
+        let cd = content_description_header_field_parser(br#""This is a description""#)
+            .unwrap()
+            .1;
+        assert_eq!(cd.get_text(), Some(b"Content-Description: This is a description\r\n".to_vec()));
     }
 }
