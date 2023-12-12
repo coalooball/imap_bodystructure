@@ -89,6 +89,20 @@ pub struct ContentTypeHeaderField<'a> {
     parameters: Parameters<'a>,
 }
 
+impl ContentTypeHeaderField<'_> {
+    fn get_text(&self) -> Vec<u8> {
+        let mut result = b"Content-Type: ".to_vec();
+        result.append(&mut self.ttype.get_content_type_text());
+        for param in &self.parameters.list {
+            result.extend_from_slice(b";\r\n");
+            result.extend_from_slice(b"        ");
+            result.extend(param.get_content_type_text().iter());
+        }
+        result.extend_from_slice(b"\r\n");
+        result
+    }
+}
+
 pub fn content_type_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentTypeHeaderField> {
     map(
         tuple((
@@ -207,6 +221,14 @@ mod tests {
                     }]
                 }
             }
+        )
+    }
+    #[test]
+    fn test_get_text_1() {
+        let text = content_type_header_field_parser(br#""text" "html" ("charset" "utf-8")"#).unwrap().1;
+        assert_eq!(
+            text.get_text(),
+            b"Content-Type: text/html;\r\n        charset=\"utf-8\"\r\n"
         )
     }
 }
