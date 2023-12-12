@@ -27,11 +27,14 @@ pub struct ContentType<'a> {
     subtype: &'a [u8],
 }
 
-pub fn content_type(s: &[u8]) -> IResult<&[u8], ContentType> {
-    map(tuple((double_quoted_string, tag(b" "), double_quoted_string)), |(ttype, _, subtype)| ContentType {
-        ttype: ttype,
-        subtype: subtype
-    })(s)
+pub fn content_type_main(s: &[u8]) -> IResult<&[u8], ContentType> {
+    map(
+        tuple((double_quoted_string, tag(b" "), double_quoted_string)),
+        |(ttype, _, subtype)| ContentType {
+            ttype: ttype,
+            subtype: subtype,
+        },
+    )(s)
 }
 
 #[cfg(test)]
@@ -46,14 +49,23 @@ mod tests {
 
     #[test]
     fn test_double_quoted_string_1() {
-        assert_eq!(double_quoted_string(br#""something""#), Ok((b"".as_ref(), b"something".as_ref())));
+        assert_eq!(
+            double_quoted_string(br#""something""#),
+            Ok((b"".as_ref(), b"something".as_ref()))
+        );
     }
 
     #[test]
     fn test_content_type_1() {
-        assert_eq!(content_type(br#""TEXT" "PLAIN""#), Ok((b"".as_ref(), ContentType {
-            ttype: b"TEXT",
-            subtype: b"PLAIN"
-        })));
+        assert_eq!(
+            content_type_main(br#""TEXT" "PLAIN""#),
+            Ok((
+                b"".as_ref(),
+                ContentType {
+                    ttype: b"TEXT",
+                    subtype: b"PLAIN"
+                }
+            ))
+        );
     }
 }
