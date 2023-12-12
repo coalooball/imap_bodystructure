@@ -22,6 +22,21 @@ pub fn double_quoted_string(s: &[u8]) -> IResult<&[u8], &[u8]> {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct Parameter<'a> {
+    attribute: &'a [u8],
+    value: &'a [u8],
+}
+
+pub fn parameter(s: &[u8]) -> IResult<&[u8], Parameter> {
+    map(
+        tuple((double_quoted_string, tag(b" "), double_quoted_string)),
+        |(attribute, _, value)| Parameter {
+            attribute: attribute,
+            value: value,
+        },
+    )(s)
+}
+#[derive(Debug, PartialEq)]
 pub struct ContentType<'a> {
     ttype: &'a [u8],
     subtype: &'a [u8],
@@ -64,6 +79,19 @@ mod tests {
                 ContentType {
                     ttype: b"TEXT",
                     subtype: b"PLAIN"
+                }
+            ))
+        );
+    }
+    #[test]
+    fn test_parameter_1() {
+        assert_eq!(
+            parameter(br#""CHARSET" "ISO-8859-1""#),
+            Ok((
+                b"".as_ref(),
+                Parameter {
+                    attribute: b"CHARSET",
+                    value: b"ISO-8859-1"
                 }
             ))
         );
