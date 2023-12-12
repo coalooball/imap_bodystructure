@@ -83,6 +83,27 @@ pub fn content_type_main(s: &[u8]) -> IResult<&[u8], ContentTypeTypeAndSubType> 
     )(s)
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ContentTypeHeaderField<'a> {
+    ttype: ContentTypeTypeAndSubType<'a>,
+    parameters: Parameters<'a>,
+}
+
+pub fn content_type_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentTypeHeaderField> {
+    map(
+        tuple((
+            content_type_main,
+            tag(b" "),
+            delimited(tag(b"("), parameters, tag(b")")),
+        )),
+        // Initialism: cttast for ContentTypeTypeAndSubType
+        |(cttast, _, params)| ContentTypeHeaderField {
+            ttype: cttast,
+            parameters: params,
+        },
+    )(s)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,6 +189,24 @@ mod tests {
             }
             .get_content_type_text(),
             br#"text/plain"#
+        )
+    }
+    #[test]
+    fn test_content_type_header_field_parser_1() {
+        assert_eq!(
+            content_type_header_field_parser(br#""text" "html" ("charset" "utf-8")"#).unwrap().1,
+            ContentTypeHeaderField {
+                ttype: ContentTypeTypeAndSubType {
+                    ttype: b"text",
+                    subtype: b"html"
+                },
+                parameters: Parameters {
+                    list: vec![Parameter {
+                        attribute: b"charset",
+                        value: b"utf-8"
+                    }]
+                }
+            }
         )
     }
 }
