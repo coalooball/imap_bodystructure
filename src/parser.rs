@@ -59,15 +59,24 @@ pub fn parameters(s: &[u8]) -> IResult<&[u8], Parameters> {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ContentType<'a> {
+pub struct ContentTypeTypeAndSubType<'a> {
     ttype: &'a [u8],
     subtype: &'a [u8],
 }
 
-pub fn content_type_main(s: &[u8]) -> IResult<&[u8], ContentType> {
+impl ContentTypeTypeAndSubType<'_> {
+    pub fn get_content_type_text(&self) -> Vec<u8> {
+        let mut result = self.ttype.to_vec();
+        result.extend_from_slice(b"/");
+        result.extend(self.subtype.to_vec().iter());
+        result
+    }
+}
+
+pub fn content_type_main(s: &[u8]) -> IResult<&[u8], ContentTypeTypeAndSubType> {
     map(
         tuple((double_quoted_string, tag(b" "), double_quoted_string)),
-        |(ttype, _, subtype)| ContentType {
+        |(ttype, _, subtype)| ContentTypeTypeAndSubType {
             ttype: ttype,
             subtype: subtype,
         },
@@ -98,7 +107,7 @@ mod tests {
             content_type_main(br#""TEXT" "PLAIN""#),
             Ok((
                 b"".as_ref(),
-                ContentType {
+                ContentTypeTypeAndSubType {
                     ttype: b"TEXT",
                     subtype: b"PLAIN"
                 }
@@ -140,13 +149,25 @@ mod tests {
         )
     }
     #[test]
-    fn test_get_content_type_text() {
+    fn test_get_content_type_text_1() {
         assert_eq!(
             Parameter {
                 attribute: b"CHARSET",
                 value: b"ISO-8859-1"
-            }.get_content_type_text(),
+            }
+            .get_content_type_text(),
             br#"CHARSET="ISO-8859-1""#
+        )
+    }
+    #[test]
+    fn test_get_content_type_text_2() {
+        assert_eq!(
+            ContentTypeTypeAndSubType {
+                ttype: b"text",
+                subtype: b"plain"
+            }
+            .get_content_type_text(),
+            br#"text/plain"#
         )
     }
 }
