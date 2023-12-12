@@ -118,6 +118,7 @@ pub fn content_type_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentTypeH
         },
     )(s)
 }
+/// RFC 2046
 #[derive(Debug, PartialEq)]
 pub struct ContentIDHeaderField<'a> {
     value: Option<&'a [u8]>,
@@ -129,6 +130,24 @@ pub fn content_id_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentIDHeade
             ContentIDHeaderField { value: None }
         } else {
             ContentIDHeaderField { value: Some(val) }
+        }
+    })(s)
+}
+
+/// RFC 2047
+#[derive(Debug, PartialEq)]
+pub struct ContentDescriptionHeaderField<'a> {
+    value: Option<&'a [u8]>,
+}
+
+pub fn content_description_header_field_parser(
+    s: &[u8],
+) -> IResult<&[u8], ContentDescriptionHeaderField> {
+    map(alt((tag_no_case(b"NIL"), double_quoted_string)), |val| {
+        if val.to_ascii_lowercase() == b"nil" {
+            ContentDescriptionHeaderField { value: None }
+        } else {
+            ContentDescriptionHeaderField { value: Some(val) }
         }
     })(s)
 }
@@ -262,6 +281,21 @@ mod tests {
                 .1,
             ContentIDHeaderField {
                 value: Some(b"<id42@guppylake.bellcore.com>")
+            }
+        );
+    }
+    #[test]
+    fn test_content_description_header_field_parser_1() {
+        assert_eq!(
+            content_description_header_field_parser(b"NIL").unwrap().1,
+            ContentDescriptionHeaderField { value: None }
+        );
+        assert_eq!(
+            content_description_header_field_parser(br#""Content-Description""#)
+                .unwrap()
+                .1,
+            ContentDescriptionHeaderField {
+                value: Some(b"Content-Description")
             }
         );
     }
