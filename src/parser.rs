@@ -27,6 +27,16 @@ pub struct Parameter<'a> {
     value: &'a [u8],
 }
 
+impl Parameter<'_> {
+    pub fn get_content_type_text(&self) -> Vec<u8> {
+        let mut result = self.attribute.to_vec();
+        result.extend_from_slice(b"=\"");
+        result.extend(self.value.to_vec().iter());
+        result.extend_from_slice(b"\"");
+        result
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Parameters<'a> {
     list: Vec<Parameter<'a>>,
@@ -127,6 +137,16 @@ mod tests {
                     ]
                 }
             ))
+        )
+    }
+    #[test]
+    fn test_get_content_type_text() {
+        assert_eq!(
+            Parameter {
+                attribute: b"CHARSET",
+                value: b"ISO-8859-1"
+            }.get_content_type_text(),
+            br#"CHARSET="ISO-8859-1""#
         )
     }
 }
