@@ -2,7 +2,7 @@ pub use nom::IResult;
 use nom::{
     bytes::complete::{tag, tag_no_case, take_till},
     combinator::map,
-    multi::many1,
+    multi::{many1, separated_list1},
     sequence::{delimited, tuple},
 };
 
@@ -27,6 +27,11 @@ pub struct Parameter<'a> {
     value: &'a [u8],
 }
 
+#[derive(Debug, PartialEq)]
+pub struct Parameters<'a> {
+    list: Vec<Parameter<'a>>,
+}
+
 pub fn parameter(s: &[u8]) -> IResult<&[u8], Parameter> {
     map(
         tuple((double_quoted_string, tag(b" "), double_quoted_string)),
@@ -36,6 +41,13 @@ pub fn parameter(s: &[u8]) -> IResult<&[u8], Parameter> {
         },
     )(s)
 }
+
+pub fn parameters(s: &[u8]) -> IResult<&[u8], Parameters> {
+    map(separated_list1(tag(b" "), parameter), |list| Parameters {
+        list: list,
+    })(s)
+}
+
 #[derive(Debug, PartialEq)]
 pub struct ContentType<'a> {
     ttype: &'a [u8],
@@ -95,5 +107,26 @@ mod tests {
                 }
             ))
         );
+    }
+    #[test]
+    fn test_parameters_1() {
+        assert_eq!(
+            parameters(br#""CHARSET" "ISO-8859-1" "second" "2""#),
+            Ok((
+                b"".as_ref(),
+                Parameters {
+                    list: vec![
+                        Parameter {
+                            attribute: b"CHARSET",
+                            value: b"ISO-8859-1"
+                        },
+                        Parameter {
+                            attribute: b"second",
+                            value: b"2"
+                        }
+                    ]
+                }
+            ))
+        )
     }
 }
