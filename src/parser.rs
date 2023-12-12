@@ -21,6 +21,19 @@ pub fn double_quoted_string(s: &[u8]) -> IResult<&[u8], &[u8]> {
     delimited(tag(b"\""), take_till(is_double_quote), tag(b"\""))(s)
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ContentType<'a> {
+    ttype: &'a [u8],
+    subtype: &'a [u8],
+}
+
+pub fn content_type(s: &[u8]) -> IResult<&[u8], ContentType> {
+    map(tuple((double_quoted_string, tag(b" "), double_quoted_string)), |(ttype, _, subtype)| ContentType {
+        ttype: ttype,
+        subtype: subtype
+    })(s)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -34,5 +47,13 @@ mod tests {
     #[test]
     fn test_double_quoted_string_1() {
         assert_eq!(double_quoted_string(br#""something""#), Ok((b"".as_ref(), b"something".as_ref())));
+    }
+
+    #[test]
+    fn test_content_type_1() {
+        assert_eq!(content_type(br#""TEXT" "PLAIN""#), Ok((b"".as_ref(), ContentType {
+            ttype: b"TEXT",
+            subtype: b"PLAIN"
+        })));
     }
 }
