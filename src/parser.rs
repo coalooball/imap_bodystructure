@@ -175,6 +175,27 @@ pub fn content_description_header_field_parser(
         }
     })(s)
 }
+#[derive(Debug, PartialEq)]
+pub struct ContentTransferEncodingHeaderField<'a> {
+    value: &'a [u8],
+}
+
+impl ContentTransferEncodingHeaderField<'_> {
+    pub fn get_text(&self) -> Vec<u8> {
+        let mut result = b"Content-Transfer-Encoding: ".to_vec();
+        result.append(&mut self.value.to_vec());
+        result.extend_from_slice(b"\r\n");
+        result
+    }
+}
+
+pub fn content_transfer_encoding_header_field_parser(
+    s: &[u8],
+) -> IResult<&[u8], ContentTransferEncodingHeaderField> {
+    map(double_quoted_string, |val| {
+        ContentTransferEncodingHeaderField { value: val }
+    })(s)
+}
 
 #[cfg(test)]
 mod tests {
@@ -328,13 +349,27 @@ mod tests {
         let ci = content_id_header_field_parser(br#""<id42@guppylake.bellcore.com>""#)
             .unwrap()
             .1;
-        assert_eq!(ci.get_text(), Some(b"Content-ID: <id42@guppylake.bellcore.com>\r\n".to_vec()));
+        assert_eq!(
+            ci.get_text(),
+            Some(b"Content-ID: <id42@guppylake.bellcore.com>\r\n".to_vec())
+        );
     }
     #[test]
     fn test_content_desc_get_text_1() {
         let cd = content_description_header_field_parser(br#""This is a description""#)
             .unwrap()
             .1;
-        assert_eq!(cd.get_text(), Some(b"Content-Description: This is a description\r\n".to_vec()));
+        assert_eq!(
+            cd.get_text(),
+            Some(b"Content-Description: This is a description\r\n".to_vec())
+        );
+    }
+    #[test]
+    fn test_content_transfer_encoding_header_field_parser_1() {
+        let res = content_transfer_encoding_header_field_parser(b"\"base64\"")
+            .unwrap()
+            .1;
+        assert_eq!(res, ContentTransferEncodingHeaderField { value: b"base64" });
+        assert_eq!(res.get_text(), b"Content-Transfer-Encoding: base64\r\n")
     }
 }
