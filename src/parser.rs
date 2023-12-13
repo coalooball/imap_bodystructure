@@ -1,7 +1,10 @@
+use std::str::from_utf8;
+
 pub use nom::IResult;
 use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case, take_till},
+    character::complete::digit1,
     combinator::map,
     multi::{many1, separated_list1},
     sequence::{delimited, tuple},
@@ -194,6 +197,21 @@ pub fn content_transfer_encoding_header_field_parser(
 ) -> IResult<&[u8], ContentTransferEncodingHeaderField> {
     map(double_quoted_string, |val| {
         ContentTransferEncodingHeaderField { value: val }
+    })(s)
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ContentSize(Option<usize>);
+
+pub fn content_size_parser(s: &[u8]) -> IResult<&[u8], ContentSize> {
+    map(alt((tag_no_case("NIL"), digit1)), |val: &[u8]| {
+        if val.to_ascii_lowercase() == b"nil" {
+            ContentSize(None)
+        } else {
+            let tmp_str = from_utf8(val).unwrap();
+            let size = str::parse::<usize>(tmp_str).unwrap();
+            ContentSize(Some(size))
+        }
     })(s)
 }
 
@@ -390,5 +408,10 @@ mod tests {
             .1;
         assert_eq!(res, ContentTransferEncodingHeaderField { value: b"base64" });
         assert_eq!(res.get_text(), b"Content-Transfer-Encoding: base64\r\n")
+    }
+    #[test]
+    fn test_content_size_1() {
+        assert_eq!(content_size_parser(b"1234").unwrap().1, ContentSize(Some(1234)));
+        assert_eq!(content_size_parser(b"nil").unwrap().1, ContentSize(None));
     }
 }
