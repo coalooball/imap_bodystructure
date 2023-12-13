@@ -97,7 +97,7 @@ pub struct ContentTypeHeaderField {
     parameters: Parameters,
 }
 
-impl ContentTypeHeaderField{
+impl ContentTypeHeaderField {
     pub fn get_text(&self) -> Vec<u8> {
         let mut result = b"Content-Type: ".to_vec();
         result.append(&mut self.ttype.get_content_type_text());
@@ -123,11 +123,11 @@ pub fn content_type_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentTypeH
 }
 /// RFC 2046
 #[derive(Debug, PartialEq)]
-pub struct ContentIDHeaderField{
+pub struct ContentIDHeaderField {
     value: Option<Vec<u8>>,
 }
 
-impl ContentIDHeaderField{
+impl ContentIDHeaderField {
     pub fn get_text(&self) -> Option<Vec<u8>> {
         if let Some(value) = self.value.clone() {
             let mut result = b"Content-ID: ".to_vec();
@@ -144,7 +144,9 @@ pub fn content_id_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentIDHeade
         if val.to_ascii_lowercase() == b"nil" {
             ContentIDHeaderField { value: None }
         } else {
-            ContentIDHeaderField { value: Some(val.to_vec()) }
+            ContentIDHeaderField {
+                value: Some(val.to_vec()),
+            }
         }
     })(s)
 }
@@ -174,7 +176,9 @@ pub fn content_description_header_field_parser(
         if val.to_ascii_lowercase() == b"nil" {
             ContentDescriptionHeaderField { value: None }
         } else {
-            ContentDescriptionHeaderField { value: Some(val.to_vec()) }
+            ContentDescriptionHeaderField {
+                value: Some(val.to_vec()),
+            }
         }
     })(s)
 }
@@ -183,7 +187,7 @@ pub struct ContentTransferEncodingHeaderField {
     value: Vec<u8>,
 }
 
-impl ContentTransferEncodingHeaderField{
+impl ContentTransferEncodingHeaderField {
     pub fn get_text(&self) -> Vec<u8> {
         let mut result = b"Content-Transfer-Encoding: ".to_vec();
         result.append(&mut self.value.to_vec());
@@ -196,7 +200,9 @@ pub fn content_transfer_encoding_header_field_parser(
     s: &[u8],
 ) -> IResult<&[u8], ContentTransferEncodingHeaderField> {
     map(double_quoted_string, |val| {
-        ContentTransferEncodingHeaderField { value: val.to_vec() }
+        ContentTransferEncodingHeaderField {
+            value: val.to_vec(),
+        }
     })(s)
 }
 
@@ -215,15 +221,18 @@ impl ContentSize {
 }
 
 pub fn content_size_parser(s: &[u8]) -> IResult<&[u8], ContentSize> {
-    map(alt((tag_no_case("NIL"), digit1)), |val: &[u8]| {
-        if val.to_ascii_lowercase() == b"nil" {
-            ContentSize(None)
-        } else {
-            let tmp_str = from_utf8(val).unwrap();
-            let size = str::parse::<usize>(tmp_str).unwrap();
-            ContentSize(Some(size))
-        }
-    })(s)
+    map(
+        alt((map(tag_no_case("NIL"), |_| None), map(digit1, |x| Some(x)))),
+        |val| {
+            if let Some(size) = val {
+                let tmp_str = from_utf8(size).unwrap();
+                let size = str::parse::<usize>(tmp_str).unwrap();
+                ContentSize(Some(size))
+            } else {
+                ContentSize(None)
+            }
+        },
+    )(s)
 }
 
 #[cfg(test)]
@@ -417,7 +426,12 @@ mod tests {
         let res = content_transfer_encoding_header_field_parser(b"\"base64\"")
             .unwrap()
             .1;
-        assert_eq!(res, ContentTransferEncodingHeaderField { value: b"base64".to_vec() });
+        assert_eq!(
+            res,
+            ContentTransferEncodingHeaderField {
+                value: b"base64".to_vec()
+            }
+        );
         assert_eq!(res.get_text(), b"Content-Transfer-Encoding: base64\r\n")
     }
     #[test]
