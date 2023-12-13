@@ -54,9 +54,10 @@ pub fn parameter(s: &[u8]) -> IResult<&[u8], Parameter> {
 }
 
 pub fn parameters(s: &[u8]) -> IResult<&[u8], Parameters> {
-    map(separated_list1(tag(b" "), parameter), |list| Parameters {
-        list: list,
-    })(s)
+    map(
+        delimited(tag(b"("), separated_list1(tag(b" "), parameter), tag(b")")),
+        |list| Parameters { list: list },
+    )(s)
 }
 
 #[derive(Debug, PartialEq)]
@@ -106,11 +107,7 @@ impl ContentTypeHeaderField<'_> {
 
 pub fn content_type_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentTypeHeaderField> {
     map(
-        tuple((
-            content_type_main,
-            tag(b" "),
-            delimited(tag(b"("), parameters, tag(b")")),
-        )),
+        tuple((content_type_main, tag(b" "), parameters)),
         // Initialism: cttast for ContentTypeTypeAndSubType
         |(cttast, _, params)| ContentTypeHeaderField {
             ttype: cttast,
@@ -244,7 +241,7 @@ mod tests {
     #[test]
     fn test_parameters_1() {
         assert_eq!(
-            parameters(br#""CHARSET" "ISO-8859-1" "second" "2""#),
+            parameters(br#"("CHARSET" "ISO-8859-1" "second" "2")"#),
             Ok((
                 b"".as_ref(),
                 Parameters {
