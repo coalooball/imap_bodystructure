@@ -55,7 +55,10 @@ pub fn parameter(s: &[u8]) -> IResult<&[u8], Parameter> {
 
 pub fn parameters(s: &[u8]) -> IResult<&[u8], Parameters> {
     map(
-        delimited(tag(b"("), separated_list1(tag(b" "), parameter), tag(b")")),
+        alt((
+            map(tag_no_case("NIL"), |_| vec![]),
+            delimited(tag(b"("), separated_list1(tag(b" "), parameter), tag(b")")),
+        )),
         |list| Parameters { list: list },
     )(s)
 }
@@ -299,17 +302,36 @@ mod tests {
                     }]
                 }
             }
-        )
+        );
+        assert_eq!(
+            content_type_header_field_parser(br#""application" "octet-stream" NIL"#)
+                .unwrap()
+                .1,
+            ContentTypeHeaderField {
+                ttype: ContentTypeTypeAndSubType {
+                    ttype: b"application",
+                    subtype: b"octet-stream"
+                },
+                parameters: Parameters { list: vec![] }
+            }
+        );
     }
     #[test]
-    fn test_get_text_1() {
+    fn test_content_type_header_field_get_text_1() {
         let text = content_type_header_field_parser(br#""text" "html" ("charset" "utf-8")"#)
             .unwrap()
             .1;
         assert_eq!(
             text.get_text(),
             b"Content-Type: text/html;\r\n        charset=\"utf-8\"\r\n"
-        )
+        );
+        let text = content_type_header_field_parser(br#""application" "octet-stream" NIL"#)
+            .unwrap()
+            .1;
+        assert_eq!(
+            text.get_text(),
+            b"Content-Type: application/octet-stream\r\n"
+        );
     }
     #[test]
     fn test_content_id_header_field_parser_1() {
