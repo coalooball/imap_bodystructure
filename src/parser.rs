@@ -278,6 +278,41 @@ pub fn content_md5_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentMD5Hea
         value: val.to_vec(),
     })(s)
 }
+#[derive(Debug, PartialEq)]
+pub struct ContentDispositionHeaderField {
+    value: Vec<u8>,
+    parameters: Parameters,
+}
+
+impl ContentDispositionHeaderField {
+    pub fn get_text(&self) -> Vec<u8> {
+        let mut result = b"Content-Disposition: ".to_vec();
+        result.append(&mut self.value.to_vec());
+        for param in &self.parameters.list {
+            result.extend_from_slice(b";\r\n");
+            result.extend_from_slice(b"        ");
+            result.extend(param.get_content_type_text().iter());
+        }
+        result.extend_from_slice(b"\r\n");
+        result
+    }
+}
+
+pub fn content_disposition_header_field_parser(
+    s: &[u8],
+) -> IResult<&[u8], ContentDispositionHeaderField> {
+    map(
+        delimited(
+            tag(b"("),
+            tuple((double_quoted_string, tag(b" "), parameters)),
+            tag(b")"),
+        ),
+        |(value, _, params)| ContentDispositionHeaderField {
+            value: value.to_vec(),
+            parameters: params,
+        },
+    )(s)
+}
 
 #[cfg(test)]
 mod tests {
@@ -509,7 +544,9 @@ mod tests {
                 .unwrap()
                 .1
                 .get_text(),
-            b"Content-MD5: Q2hlY2sgSW50ZWdyaXR5IQ==\r\n".as_ref().to_vec()
+            b"Content-MD5: Q2hlY2sgSW50ZWdyaXR5IQ==\r\n"
+                .as_ref()
+                .to_vec()
         );
         assert_eq!(
             content_md5_header_field_parser(b"\"Q2hlY2sgSW50ZWdyaXR5IQ==\"")
@@ -518,6 +555,46 @@ mod tests {
             ContentMD5HeaderField {
                 value: b"Q2hlY2sgSW50ZWdyaXR5IQ==".to_vec()
             }
+        );
+    }
+    #[test]
+    fn test_disopsition_header_field() {
+        assert_eq!(
+            content_disposition_header_field_parser(br#"("attachment" ("FILENAME" "pages.pdf"))"#)
+                .unwrap()
+                .1,
+            ContentDispositionHeaderField {
+                value: b"attachment".to_vec(),
+                parameters: Parameters {
+                    list: vec![Parameter {
+                        attribute: b"FILENAME".to_vec(),
+                        value: b"pages.pdf".to_vec()
+                    }]
+                }
+            }
+        );
+        assert_eq!(
+            content_disposition_header_field_parser(br#"("attachment" ("FILENAME" "pages.pdf"))"#)
+                .unwrap()
+                .1
+                .get_text(),
+            b"Content-Disposition: attachment;\r\n        FILENAME=\"pages.pdf\"\r\n"
+        );
+        assert_eq!(
+            content_disposition_header_field_parser(br#"("attachment" NIL)"#)
+                .unwrap()
+                .1,
+            ContentDispositionHeaderField {
+                value: b"attachment".to_vec(),
+                parameters: Parameters { list: vec![] }
+            }
+        );
+        assert_eq!(
+            content_disposition_header_field_parser(br#"("attachment" NIL)"#)
+                .unwrap()
+                .1
+                .get_text(),
+            b"Content-Disposition: attachment\r\n"
         );
     }
 }
