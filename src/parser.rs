@@ -207,13 +207,19 @@ pub fn content_transfer_encoding_header_field_parser(
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ContentSize(Option<usize>);
+pub struct ContentSize(Option<usize>, Option<usize>);
 
 impl ContentSize {
     pub fn get_text(&self) -> Vec<u8> {
         if let Some(value) = self.0 {
             let tmp_string = value.to_string();
-            tmp_string.as_str().as_bytes().to_vec()
+            let mut result = tmp_string.as_str().as_bytes().to_vec();
+            if let Some(value2) = self.1 {
+                let value2 = value2.to_string();
+                result.append(&mut vec![0x20]);
+                result.append(&mut value2.as_str().as_bytes().to_vec());
+            }
+            result
         } else {
             vec![0x30]
         }
@@ -222,14 +228,32 @@ impl ContentSize {
 
 pub fn content_size_parser(s: &[u8]) -> IResult<&[u8], ContentSize> {
     map(
-        alt((map(tag_no_case("NIL"), |_| None), map(digit1, |x| Some(x)))),
+        alt((
+            map(tag_no_case("NIL"), |_| None),
+            map(
+                alt((
+                    map(tuple((digit1, tag(b" "), digit1)), |(x, _, y)| (x, Some(y))),
+                    map(digit1, |x| (x, None)),
+                )),
+                |x| Some(x),
+            ),
+        )),
         |val| {
-            if let Some(size) = val {
-                let tmp_str = from_utf8(size).unwrap();
-                let size = str::parse::<usize>(tmp_str).unwrap();
-                ContentSize(Some(size))
+            if let Some(size_tuple) = val {
+                let (left, right) = size_tuple;
+                let tmp_str = from_utf8(left).unwrap();
+                let left_size = str::parse::<usize>(tmp_str).unwrap();
+                let result = match right {
+                    Some(right_val) => {
+                        let tmp_str = from_utf8(right_val).unwrap();
+                        let right_size = str::parse::<usize>(tmp_str).unwrap();
+                        Some(right_size)
+                    }
+                    None => None,
+                };
+                ContentSize(Some(left_size), result)
             } else {
-                ContentSize(None)
+                ContentSize(None, None)
             }
         },
     )(s)
@@ -438,13 +462,24 @@ mod tests {
     fn test_content_size_1() {
         assert_eq!(
             content_size_parser(b"1234").unwrap().1,
-            ContentSize(Some(1234))
+            ContentSize(Some(1234), None)
         );
-        assert_eq!(content_size_parser(b"nil").unwrap().1, ContentSize(None));
+        assert_eq!(
+            content_size_parser(b"nil").unwrap().1,
+            ContentSize(None, None)
+        );
+        assert_eq!(
+            content_size_parser(b"1417 36").unwrap().1,
+            ContentSize(Some(1417), Some(36))
+        );
     }
     #[test]
     fn test_content_size_2() {
         assert_eq!(content_size_parser(b"1234").unwrap().1.get_text(), b"1234");
         assert_eq!(content_size_parser(b"nil").unwrap().1.get_text(), b"0");
+        assert_eq!(
+            content_size_parser(b"1417 36").unwrap().1.get_text(),
+            b"1417 36"
+        );
     }
 }
