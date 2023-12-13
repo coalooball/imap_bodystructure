@@ -26,32 +26,32 @@ pub fn double_quoted_string(s: &[u8]) -> IResult<&[u8], &[u8]> {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Parameter<'a> {
-    attribute: &'a [u8],
-    value: &'a [u8],
+pub struct Parameter {
+    attribute: Vec<u8>,
+    value: Vec<u8>,
 }
 
-impl Parameter<'_> {
+impl Parameter {
     pub fn get_content_type_text(&self) -> Vec<u8> {
-        let mut result = self.attribute.to_vec();
+        let mut result = self.attribute.clone();
         result.extend_from_slice(b"=\"");
-        result.extend(self.value.to_vec().iter());
+        result.extend(self.value.clone().iter());
         result.extend_from_slice(b"\"");
         result
     }
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Parameters<'a> {
-    list: Vec<Parameter<'a>>,
+pub struct Parameters {
+    list: Vec<Parameter>,
 }
 
 pub fn parameter(s: &[u8]) -> IResult<&[u8], Parameter> {
     map(
         tuple((double_quoted_string, tag(b" "), double_quoted_string)),
         |(attribute, _, value)| Parameter {
-            attribute: attribute,
-            value: value,
+            attribute: attribute.to_vec(),
+            value: value.to_vec(),
         },
     )(s)
 }
@@ -67,12 +67,12 @@ pub fn parameters(s: &[u8]) -> IResult<&[u8], Parameters> {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ContentTypeTypeAndSubType<'a> {
-    ttype: &'a [u8],
-    subtype: &'a [u8],
+pub struct ContentTypeTypeAndSubType {
+    ttype: Vec<u8>,
+    subtype: Vec<u8>,
 }
 
-impl ContentTypeTypeAndSubType<'_> {
+impl ContentTypeTypeAndSubType {
     pub fn get_content_type_text(&self) -> Vec<u8> {
         let mut result = self.ttype.to_vec();
         result.extend_from_slice(b"/");
@@ -85,19 +85,19 @@ pub fn content_type_main(s: &[u8]) -> IResult<&[u8], ContentTypeTypeAndSubType> 
     map(
         tuple((double_quoted_string, tag(b" "), double_quoted_string)),
         |(ttype, _, subtype)| ContentTypeTypeAndSubType {
-            ttype: ttype,
-            subtype: subtype,
+            ttype: ttype.to_vec(),
+            subtype: subtype.to_vec(),
         },
     )(s)
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ContentTypeHeaderField<'a> {
-    ttype: ContentTypeTypeAndSubType<'a>,
-    parameters: Parameters<'a>,
+pub struct ContentTypeHeaderField {
+    ttype: ContentTypeTypeAndSubType,
+    parameters: Parameters,
 }
 
-impl ContentTypeHeaderField<'_> {
+impl ContentTypeHeaderField{
     pub fn get_text(&self) -> Vec<u8> {
         let mut result = b"Content-Type: ".to_vec();
         result.append(&mut self.ttype.get_content_type_text());
@@ -123,13 +123,13 @@ pub fn content_type_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentTypeH
 }
 /// RFC 2046
 #[derive(Debug, PartialEq)]
-pub struct ContentIDHeaderField<'a> {
-    value: Option<&'a [u8]>,
+pub struct ContentIDHeaderField{
+    value: Option<Vec<u8>>,
 }
 
-impl ContentIDHeaderField<'_> {
+impl ContentIDHeaderField{
     pub fn get_text(&self) -> Option<Vec<u8>> {
-        if let Some(value) = self.value {
+        if let Some(value) = self.value.clone() {
             let mut result = b"Content-ID: ".to_vec();
             result.append(&mut value.to_vec());
             result.extend_from_slice(b"\r\n");
@@ -144,20 +144,20 @@ pub fn content_id_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentIDHeade
         if val.to_ascii_lowercase() == b"nil" {
             ContentIDHeaderField { value: None }
         } else {
-            ContentIDHeaderField { value: Some(val) }
+            ContentIDHeaderField { value: Some(val.to_vec()) }
         }
     })(s)
 }
 
 /// RFC 2047
 #[derive(Debug, PartialEq)]
-pub struct ContentDescriptionHeaderField<'a> {
-    value: Option<&'a [u8]>,
+pub struct ContentDescriptionHeaderField {
+    value: Option<Vec<u8>>,
 }
 
-impl ContentDescriptionHeaderField<'_> {
+impl ContentDescriptionHeaderField {
     pub fn get_text(&self) -> Option<Vec<u8>> {
-        if let Some(value) = self.value {
+        if let Some(value) = self.value.clone() {
             let mut result = b"Content-Description: ".to_vec();
             result.append(&mut value.to_vec());
             result.extend_from_slice(b"\r\n");
@@ -174,16 +174,16 @@ pub fn content_description_header_field_parser(
         if val.to_ascii_lowercase() == b"nil" {
             ContentDescriptionHeaderField { value: None }
         } else {
-            ContentDescriptionHeaderField { value: Some(val) }
+            ContentDescriptionHeaderField { value: Some(val.to_vec()) }
         }
     })(s)
 }
 #[derive(Debug, PartialEq)]
-pub struct ContentTransferEncodingHeaderField<'a> {
-    value: &'a [u8],
+pub struct ContentTransferEncodingHeaderField {
+    value: Vec<u8>,
 }
 
-impl ContentTransferEncodingHeaderField<'_> {
+impl ContentTransferEncodingHeaderField{
     pub fn get_text(&self) -> Vec<u8> {
         let mut result = b"Content-Transfer-Encoding: ".to_vec();
         result.append(&mut self.value.to_vec());
@@ -196,7 +196,7 @@ pub fn content_transfer_encoding_header_field_parser(
     s: &[u8],
 ) -> IResult<&[u8], ContentTransferEncodingHeaderField> {
     map(double_quoted_string, |val| {
-        ContentTransferEncodingHeaderField { value: val }
+        ContentTransferEncodingHeaderField { value: val.to_vec() }
     })(s)
 }
 
@@ -251,8 +251,8 @@ mod tests {
             Ok((
                 b"".as_ref(),
                 ContentTypeTypeAndSubType {
-                    ttype: b"TEXT",
-                    subtype: b"PLAIN"
+                    ttype: b"TEXT".to_vec(),
+                    subtype: b"PLAIN".to_vec()
                 }
             ))
         );
@@ -264,8 +264,8 @@ mod tests {
             Ok((
                 b"".as_ref(),
                 Parameter {
-                    attribute: b"CHARSET",
-                    value: b"ISO-8859-1"
+                    attribute: b"CHARSET".to_vec(),
+                    value: b"ISO-8859-1".to_vec()
                 }
             ))
         );
@@ -279,12 +279,12 @@ mod tests {
                 Parameters {
                     list: vec![
                         Parameter {
-                            attribute: b"CHARSET",
-                            value: b"ISO-8859-1"
+                            attribute: b"CHARSET".to_vec(),
+                            value: b"ISO-8859-1".to_vec()
                         },
                         Parameter {
-                            attribute: b"second",
-                            value: b"2"
+                            attribute: b"second".to_vec(),
+                            value: b"2".to_vec()
                         }
                     ]
                 }
@@ -295,8 +295,8 @@ mod tests {
     fn test_get_content_type_text_1() {
         assert_eq!(
             Parameter {
-                attribute: b"CHARSET",
-                value: b"ISO-8859-1"
+                attribute: b"CHARSET".to_vec(),
+                value: b"ISO-8859-1".to_vec()
             }
             .get_content_type_text(),
             br#"CHARSET="ISO-8859-1""#
@@ -306,8 +306,8 @@ mod tests {
     fn test_get_content_type_text_2() {
         assert_eq!(
             ContentTypeTypeAndSubType {
-                ttype: b"text",
-                subtype: b"plain"
+                ttype: b"text".to_vec(),
+                subtype: b"plain".to_vec()
             }
             .get_content_type_text(),
             br#"text/plain"#
@@ -321,13 +321,13 @@ mod tests {
                 .1,
             ContentTypeHeaderField {
                 ttype: ContentTypeTypeAndSubType {
-                    ttype: b"text",
-                    subtype: b"html"
+                    ttype: b"text".to_vec(),
+                    subtype: b"html".to_vec()
                 },
                 parameters: Parameters {
                     list: vec![Parameter {
-                        attribute: b"charset",
-                        value: b"utf-8"
+                        attribute: b"charset".to_vec(),
+                        value: b"utf-8".to_vec()
                     }]
                 }
             }
@@ -338,8 +338,8 @@ mod tests {
                 .1,
             ContentTypeHeaderField {
                 ttype: ContentTypeTypeAndSubType {
-                    ttype: b"application",
-                    subtype: b"octet-stream"
+                    ttype: b"application".to_vec(),
+                    subtype: b"octet-stream".to_vec()
                 },
                 parameters: Parameters { list: vec![] }
             }
@@ -373,7 +373,7 @@ mod tests {
                 .unwrap()
                 .1,
             ContentIDHeaderField {
-                value: Some(b"<id42@guppylake.bellcore.com>")
+                value: Some(b"<id42@guppylake.bellcore.com>".to_vec())
             }
         );
     }
@@ -388,7 +388,7 @@ mod tests {
                 .unwrap()
                 .1,
             ContentDescriptionHeaderField {
-                value: Some(b"Content-Description")
+                value: Some(b"Content-Description".to_vec())
             }
         );
     }
@@ -417,12 +417,15 @@ mod tests {
         let res = content_transfer_encoding_header_field_parser(b"\"base64\"")
             .unwrap()
             .1;
-        assert_eq!(res, ContentTransferEncodingHeaderField { value: b"base64" });
+        assert_eq!(res, ContentTransferEncodingHeaderField { value: b"base64".to_vec() });
         assert_eq!(res.get_text(), b"Content-Transfer-Encoding: base64\r\n")
     }
     #[test]
     fn test_content_size_1() {
-        assert_eq!(content_size_parser(b"1234").unwrap().1, ContentSize(Some(1234)));
+        assert_eq!(
+            content_size_parser(b"1234").unwrap().1,
+            ContentSize(Some(1234))
+        );
         assert_eq!(content_size_parser(b"nil").unwrap().1, ContentSize(None));
     }
     #[test]
