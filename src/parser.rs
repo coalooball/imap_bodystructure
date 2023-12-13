@@ -5,7 +5,7 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case, take_till},
     character::complete::digit1,
-    combinator::map,
+    combinator::{map, opt},
     multi::{many1, separated_list1},
     sequence::{delimited, tuple},
 };
@@ -438,8 +438,7 @@ pub fn single_body_parser(s: &[u8]) -> IResult<&[u8], SingleBody> {
             content_disposition_header_field_parser,
             tag(b" "),
             content_language_header_field_parser,
-            tag(b" "),
-            content_location_header_field_parser,
+            opt(tuple((tag(b" "), content_location_header_field_parser))),
             tag(b")"),
         )),
         |(
@@ -459,7 +458,6 @@ pub fn single_body_parser(s: &[u8]) -> IResult<&[u8], SingleBody> {
             disposition,
             _,
             language,
-            _,
             location,
             _,
         )| SingleBody {
@@ -471,7 +469,11 @@ pub fn single_body_parser(s: &[u8]) -> IResult<&[u8], SingleBody> {
             content_md5: md5,
             content_disposition: disposition,
             content_language: language,
-            content_location: location,
+            content_location: if let Some((_, location_0)) = location {
+                location_0
+            } else {
+                ContentLocationHeaderField { value: None }
+            },
             data: vec![],
         },
     )(s)
@@ -862,6 +864,49 @@ mod tests {
                 content_location: ContentLocationHeaderField { value: None },
                 data: vec![]
             }
-        )
+        );
+        assert_eq!(
+            single_body_parser(br#"("application" "octet-stream" ("charset" "utf-8" "name" "=?utf-8?B?SG93IHNob3VsZCBzb21lb25lIHdpdGggbm8gcHJvZ3JhbW1pbmcgZXhwZXJpZW5jZSBzdGFydCBsZWFybmluZyBiYXNpY3Mgb2YgQ1BVIGFyY2hpdGVjdHVyZSBmb3Igc2VsZi1zdHVkeT8gSeKAmW0gaW50ZXJlc3RlZCBpbiBob3cgY29tcHV0ZXJzIHdvcmsgby4uLj8uZW1s?=") NIL NIL "base64" 66628 NIL ("attachment" ("filename" "=?utf-8?B?SG93IHNob3VsZCBzb21lb25lIHdpdGggbm8gcHJvZ3JhbW1pbmcgZXhwZXJpZW5jZSBzdGFydCBsZWFybmluZyBiYXNpY3Mgb2YgQ1BVIGFyY2hpdGVjdHVyZSBmb3Igc2VsZi1zdHVkeT8gSeKAmW0gaW50ZXJlc3RlZCBpbiBob3cgY29tcHV0ZXJzIHdvcmsgby4uLj8uZW1s?=")) NIL)"#).unwrap().1,
+            SingleBody {
+                content_type: ContentTypeHeaderField {
+                    ttype: ContentTypeTypeAndSubType {
+                        ttype: b"application".to_vec(),
+                        subtype: b"octet-stream".to_vec()
+                    },
+                    parameters: Parameters {
+                        list: vec![Parameter {
+                            attribute: b"charset".to_vec(),
+                            value: b"utf-8".to_vec()
+                        }, Parameter {
+                            attribute: b"name".to_vec(),
+                            value: b"=?utf-8?B?SG93IHNob3VsZCBzb21lb25lIHdpdGggbm8gcHJvZ3JhbW1pbmcgZXhwZXJpZW5jZSBzdGFydCBsZWFybmluZyBiYXNpY3Mgb2YgQ1BVIGFyY2hpdGVjdHVyZSBmb3Igc2VsZi1zdHVkeT8gSeKAmW0gaW50ZXJlc3RlZCBpbiBob3cgY29tcHV0ZXJzIHdvcmsgby4uLj8uZW1s?=".to_vec()
+                        }]
+                    }
+                },
+                content_id: ContentIDHeaderField {
+                    value: None
+                },
+                content_description: ContentDescriptionHeaderField { value: None },
+                content_transfer_encoding: ContentTransferEncodingHeaderField {
+                    value: b"base64".to_vec()
+                },
+                content_size: ContentSize(Some(66628), None),
+                content_md5: ContentMD5HeaderField {
+                    value: None
+                },
+                content_disposition: ContentDispositionHeaderField {
+                    value: Some(b"attachment".to_vec()),
+                    parameters: Parameters { list: vec![
+                        Parameter {
+                            attribute: b"filename".to_vec(),
+                            value: b"=?utf-8?B?SG93IHNob3VsZCBzb21lb25lIHdpdGggbm8gcHJvZ3JhbW1pbmcgZXhwZXJpZW5jZSBzdGFydCBsZWFybmluZyBiYXNpY3Mgb2YgQ1BVIGFyY2hpdGVjdHVyZSBmb3Igc2VsZi1zdHVkeT8gSeKAmW0gaW50ZXJlc3RlZCBpbiBob3cgY29tcHV0ZXJzIHdvcmsgby4uLj8uZW1s?=".to_vec()
+                        }
+                    ] }
+                },
+                content_language: ContentLanguageHeaderField { value: None },
+                content_location: ContentLocationHeaderField { value: None },
+                data: vec![]
+            }
+        );
     }
 }
