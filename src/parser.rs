@@ -259,6 +259,26 @@ pub fn content_size_parser(s: &[u8]) -> IResult<&[u8], ContentSize> {
     )(s)
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ContentMD5HeaderField {
+    value: Vec<u8>,
+}
+
+impl ContentMD5HeaderField {
+    pub fn get_text(&self) -> Vec<u8> {
+        let mut result = b"Content-MD5: ".to_vec();
+        result.append(&mut self.value.to_vec());
+        result.extend_from_slice(b"\r\n");
+        result
+    }
+}
+
+pub fn content_md5_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentMD5HeaderField> {
+    map(double_quoted_string, |val| ContentMD5HeaderField {
+        value: val.to_vec(),
+    })(s)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -480,6 +500,24 @@ mod tests {
         assert_eq!(
             content_size_parser(b"1417 36").unwrap().1.get_text(),
             b"1417 36"
+        );
+    }
+    #[test]
+    fn test_md5_header_field() {
+        assert_eq!(
+            content_md5_header_field_parser(b"\"Q2hlY2sgSW50ZWdyaXR5IQ==\"")
+                .unwrap()
+                .1
+                .get_text(),
+            b"Content-MD5: Q2hlY2sgSW50ZWdyaXR5IQ==\r\n".as_ref().to_vec()
+        );
+        assert_eq!(
+            content_md5_header_field_parser(b"\"Q2hlY2sgSW50ZWdyaXR5IQ==\"")
+                .unwrap()
+                .1,
+            ContentMD5HeaderField {
+                value: b"Q2hlY2sgSW50ZWdyaXR5IQ==".to_vec()
+            }
         );
     }
 }
