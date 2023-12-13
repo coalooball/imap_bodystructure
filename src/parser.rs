@@ -290,7 +290,7 @@ pub struct ContentDispositionHeaderField {
     value: Vec<u8>,
     parameters: Parameters,
 }
-
+// rfc2183
 impl ContentDispositionHeaderField {
     pub fn get_text(&self) -> Vec<u8> {
         let mut result = b"Content-Disposition: ".to_vec();
@@ -348,6 +348,36 @@ pub fn content_language_header_field_parser(
             map(double_quoted_string, |x| Some(x.to_vec())),
         )),
         |val| ContentLanguageHeaderField { value: val },
+    )(s)
+}
+
+// RFC 2557
+#[derive(Debug, PartialEq)]
+pub struct ContentLocationHeaderField {
+    value: Option<Vec<u8>>,
+}
+
+impl ContentLocationHeaderField {
+    pub fn get_text(&self) -> Option<Vec<u8>> {
+        if let Some(value) = self.value.clone() {
+            let mut result = b"Content-Location: ".to_vec();
+            result.append(&mut value.to_vec());
+            result.extend_from_slice(b"\r\n");
+            return Some(result);
+        }
+        None
+    }
+}
+
+pub fn content_location_header_field_parser(
+    s: &[u8],
+) -> IResult<&[u8], ContentLocationHeaderField> {
+    map(
+        alt((
+            map(tag_no_case(b"NIL"), |_| None),
+            map(double_quoted_string, |x| Some(x.to_vec())),
+        )),
+        |val| ContentLocationHeaderField { value: val },
     )(s)
 }
 
@@ -656,6 +686,28 @@ mod tests {
         assert_eq!(
             content_language_header_field_parser(b"NIL").unwrap().1,
             ContentLanguageHeaderField { value: None }
+        );
+    }
+    #[test]
+    fn test_location_header_field() {
+        assert_eq!(
+            content_location_header_field_parser(b"\"fiction1/fiction2\"")
+                .unwrap()
+                .1
+                .get_text(),
+            Some(b"Content-Location: fiction1/fiction2\r\n".as_ref().to_vec())
+        );
+        assert_eq!(
+            content_location_header_field_parser(b"\"fiction1/fiction2\"")
+                .unwrap()
+                .1,
+            ContentLocationHeaderField {
+                value: Some(b"fiction1/fiction2".to_vec())
+            }
+        );
+        assert_eq!(
+            content_location_header_field_parser(b"NIL").unwrap().1,
+            ContentLocationHeaderField { value: None }
         );
     }
 }
