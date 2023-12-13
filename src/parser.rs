@@ -314,6 +314,36 @@ pub fn content_disposition_header_field_parser(
     )(s)
 }
 
+// RFC 1766
+#[derive(Debug, PartialEq)]
+pub struct ContentLanguageHeaderField {
+    value: Option<Vec<u8>>,
+}
+
+impl ContentLanguageHeaderField {
+    pub fn get_text(&self) -> Option<Vec<u8>> {
+        if let Some(value) = self.value.clone() {
+            let mut result = b"Content-Language: ".to_vec();
+            result.append(&mut value.to_vec());
+            result.extend_from_slice(b"\r\n");
+            return Some(result);
+        }
+        None
+    }
+}
+
+pub fn content_language_header_field_parser(
+    s: &[u8],
+) -> IResult<&[u8], ContentLanguageHeaderField> {
+    map(
+        alt((
+            map(tag_no_case(b"NIL"), |_| None),
+            map(double_quoted_string, |x| Some(x.to_vec())),
+        )),
+        |val| ContentLanguageHeaderField { value: val },
+    )(s)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -595,6 +625,28 @@ mod tests {
                 .1
                 .get_text(),
             b"Content-Disposition: attachment\r\n"
+        );
+    }
+    #[test]
+    fn test_language_header_field() {
+        assert_eq!(
+            content_language_header_field_parser(b"\"en-cockney\"")
+                .unwrap()
+                .1
+                .get_text(),
+            Some(b"Content-Language: en-cockney\r\n".as_ref().to_vec())
+        );
+        assert_eq!(
+            content_language_header_field_parser(b"\"en-cockney\"")
+                .unwrap()
+                .1,
+            ContentLanguageHeaderField {
+                value: Some(b"en-cockney".to_vec())
+            }
+        );
+        assert_eq!(
+            content_language_header_field_parser(b"NIL").unwrap().1,
+            ContentLanguageHeaderField { value: None }
         );
     }
 }
