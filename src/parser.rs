@@ -405,9 +405,82 @@ pub fn content_location_header_field_parser(
         |val| ContentLocationHeaderField { value: val },
     )(s)
 }
+#[derive(Debug, PartialEq)]
+pub struct SingleBody {
+    pub content_type: ContentTypeHeaderField,
+    pub content_id: ContentIDHeaderField,
+    pub content_description: ContentDescriptionHeaderField,
+    pub content_transfer_encoding: ContentTransferEncodingHeaderField,
+    pub content_size: ContentSize,
+    pub content_md5: ContentMD5HeaderField,
+    pub content_disposition: ContentDispositionHeaderField,
+    pub content_language: ContentLanguageHeaderField,
+    pub content_location: ContentLocationHeaderField,
+    pub data: Vec<u8>,
+}
+
+pub fn single_body_parser(s: &[u8]) -> IResult<&[u8], SingleBody> {
+    map(
+        tuple((
+            tag(b"("),
+            content_type_header_field_parser,
+            tag(b" "),
+            content_id_header_field_parser,
+            tag(b" "),
+            content_description_header_field_parser,
+            tag(b" "),
+            content_transfer_encoding_header_field_parser,
+            tag(b" "),
+            content_size_parser,
+            tag(b" "),
+            content_md5_header_field_parser,
+            tag(b" "),
+            content_disposition_header_field_parser,
+            tag(b" "),
+            content_language_header_field_parser,
+            tag(b" "),
+            content_location_header_field_parser,
+            tag(b")"),
+        )),
+        |(
+            _,
+            ttype,
+            _,
+            id,
+            _,
+            desc,
+            _,
+            encoding,
+            _,
+            size,
+            _,
+            md5,
+            _,
+            disposition,
+            _,
+            language,
+            _,
+            location,
+            _,
+        )| SingleBody {
+            content_type: ttype,
+            content_id: id,
+            content_description: desc,
+            content_transfer_encoding: encoding,
+            content_size: size,
+            content_md5: md5,
+            content_disposition: disposition,
+            content_language: language,
+            content_location: location,
+            data: vec![],
+        },
+    )(s)
+}
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use super::*;
 
     #[test]
@@ -752,5 +825,43 @@ mod tests {
             content_location_header_field_parser(b"NIL").unwrap().1,
             ContentLocationHeaderField { value: None }
         );
+    }
+    #[test]
+    fn test_single_body() {
+        assert_eq!(
+            single_body_parser(br#"("TEXT" "HTML" ("CHARSET" "ISO-8859-1") NIL NIL "QUOTED-PRINTABLE" 4692 69 NIL NIL NIL NIL)"#).unwrap().1,
+            SingleBody {
+                content_type: ContentTypeHeaderField {
+                    ttype: ContentTypeTypeAndSubType {
+                        ttype: b"TEXT".to_vec(),
+                        subtype: b"HTML".to_vec()
+                    },
+                    parameters: Parameters {
+                        list: vec![Parameter {
+                            attribute: b"CHARSET".to_vec(),
+                            value: b"ISO-8859-1".to_vec()
+                        }]
+                    }
+                },
+                content_id: ContentIDHeaderField {
+                    value: None
+                },
+                content_description: ContentDescriptionHeaderField { value: None },
+                content_transfer_encoding: ContentTransferEncodingHeaderField {
+                    value: b"QUOTED-PRINTABLE".to_vec()
+                },
+                content_size: ContentSize(Some(4692), Some(69)),
+                content_md5: ContentMD5HeaderField {
+                    value: None
+                },
+                content_disposition: ContentDispositionHeaderField {
+                    value: None,
+                    parameters: Parameters { list: vec![] }
+                },
+                content_language: ContentLanguageHeaderField { value: None },
+                content_location: ContentLocationHeaderField { value: None },
+                data: vec![]
+            }
+        )
     }
 }
