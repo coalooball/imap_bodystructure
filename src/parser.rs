@@ -261,22 +261,29 @@ pub fn content_size_parser(s: &[u8]) -> IResult<&[u8], ContentSize> {
 
 #[derive(Debug, PartialEq)]
 pub struct ContentMD5HeaderField {
-    value: Vec<u8>,
+    value: Option<Vec<u8>>,
 }
 
 impl ContentMD5HeaderField {
-    pub fn get_text(&self) -> Vec<u8> {
-        let mut result = b"Content-MD5: ".to_vec();
-        result.append(&mut self.value.to_vec());
-        result.extend_from_slice(b"\r\n");
-        result
+    pub fn get_text(&self) -> Option<Vec<u8>> {
+        if let Some(value) = self.value.clone() {
+            let mut result = b"Content-MD5: ".to_vec();
+            result.append(&mut value.to_vec());
+            result.extend_from_slice(b"\r\n");
+            return Some(result);
+        }
+        None
     }
 }
 
 pub fn content_md5_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentMD5HeaderField> {
-    map(double_quoted_string, |val| ContentMD5HeaderField {
-        value: val.to_vec(),
-    })(s)
+    map(
+        alt((
+            map(tag_no_case(b"NIL"), |_| None),
+            map(double_quoted_string, |x| Some(x.to_vec())),
+        )),
+        |val| ContentMD5HeaderField { value: val },
+    )(s)
 }
 #[derive(Debug, PartialEq)]
 pub struct ContentDispositionHeaderField {
@@ -574,16 +581,18 @@ mod tests {
                 .unwrap()
                 .1
                 .get_text(),
-            b"Content-MD5: Q2hlY2sgSW50ZWdyaXR5IQ==\r\n"
-                .as_ref()
-                .to_vec()
+            Some(
+                b"Content-MD5: Q2hlY2sgSW50ZWdyaXR5IQ==\r\n"
+                    .as_ref()
+                    .to_vec()
+            )
         );
         assert_eq!(
             content_md5_header_field_parser(b"\"Q2hlY2sgSW50ZWdyaXR5IQ==\"")
                 .unwrap()
                 .1,
             ContentMD5HeaderField {
-                value: b"Q2hlY2sgSW50ZWdyaXR5IQ==".to_vec()
+                value: Some(b"Q2hlY2sgSW50ZWdyaXR5IQ==".to_vec())
             }
         );
     }
