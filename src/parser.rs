@@ -287,25 +287,50 @@ pub fn content_md5_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentMD5Hea
 }
 #[derive(Debug, PartialEq)]
 pub struct ContentDispositionHeaderField {
-    value: Vec<u8>,
+    value: Option<Vec<u8>>,
     parameters: Parameters,
 }
 // rfc2183
 impl ContentDispositionHeaderField {
-    pub fn get_text(&self) -> Vec<u8> {
+    pub fn get_text(&self) -> Option<Vec<u8>> {
         let mut result = b"Content-Disposition: ".to_vec();
-        result.append(&mut self.value.to_vec());
-        for param in &self.parameters.list {
-            result.extend_from_slice(b";\r\n");
-            result.extend_from_slice(b"        ");
-            result.extend(param.get_content_type_text().iter());
+        if let Some(mut value) = self.value.clone() {
+            result.append(&mut value);
+            for param in &self.parameters.list {
+                result.extend_from_slice(b";\r\n");
+                result.extend_from_slice(b"        ");
+                result.extend(param.get_content_type_text().iter());
+            }
+            result.extend_from_slice(b"\r\n");
+            Some(result)
+        } else {
+            None
         }
-        result.extend_from_slice(b"\r\n");
-        result
     }
 }
 
 pub fn content_disposition_header_field_parser(
+    s: &[u8],
+) -> IResult<&[u8], ContentDispositionHeaderField> {
+    map(
+        alt((
+            map(tag_no_case(b"NIL"), |_| None),
+            map(content_disposition_header_field_parser_0, |x| Some(x)),
+        )),
+        |disposition| {
+            if let Some(dispo) = disposition {
+                dispo
+            } else {
+                ContentDispositionHeaderField {
+                    value: None,
+                    parameters: Parameters { list: vec![] },
+                }
+            }
+        },
+    )(s)
+}
+
+pub fn content_disposition_header_field_parser_0(
     s: &[u8],
 ) -> IResult<&[u8], ContentDispositionHeaderField> {
     map(
@@ -315,7 +340,7 @@ pub fn content_disposition_header_field_parser(
             tag(b")"),
         ),
         |(value, _, params)| ContentDispositionHeaderField {
-            value: value.to_vec(),
+            value: Some(value.to_vec()),
             parameters: params,
         },
     )(s)
@@ -633,7 +658,7 @@ mod tests {
                 .unwrap()
                 .1,
             ContentDispositionHeaderField {
-                value: b"attachment".to_vec(),
+                value: Some(b"attachment".to_vec()),
                 parameters: Parameters {
                     list: vec![Parameter {
                         attribute: b"FILENAME".to_vec(),
@@ -647,14 +672,25 @@ mod tests {
                 .unwrap()
                 .1
                 .get_text(),
-            b"Content-Disposition: attachment;\r\n        FILENAME=\"pages.pdf\"\r\n"
+            Some(
+                b"Content-Disposition: attachment;\r\n        FILENAME=\"pages.pdf\"\r\n".to_vec()
+            )
         );
         assert_eq!(
             content_disposition_header_field_parser(br#"("attachment" NIL)"#)
                 .unwrap()
                 .1,
             ContentDispositionHeaderField {
-                value: b"attachment".to_vec(),
+                value: Some(b"attachment".to_vec()),
+                parameters: Parameters { list: vec![] }
+            }
+        );
+        assert_eq!(
+            content_disposition_header_field_parser(br#"NIL"#)
+                .unwrap()
+                .1,
+            ContentDispositionHeaderField {
+                value: None,
                 parameters: Parameters { list: vec![] }
             }
         );
@@ -663,7 +699,14 @@ mod tests {
                 .unwrap()
                 .1
                 .get_text(),
-            b"Content-Disposition: attachment\r\n"
+            Some(b"Content-Disposition: attachment\r\n".to_vec())
+        );
+        assert_eq!(
+            content_disposition_header_field_parser(br#"NIL"#)
+                .unwrap()
+                .1
+                .get_text(),
+            None
         );
     }
     #[test]
