@@ -203,6 +203,17 @@ pub fn content_transfer_encoding_header_field_parser(
 #[derive(Debug, PartialEq)]
 pub struct ContentSize(Option<usize>);
 
+impl ContentSize {
+    pub fn get_text(&self) -> Vec<u8> {
+        if let Some(value) = self.0 {
+            let tmp_string = value.to_string();
+            tmp_string.as_str().as_bytes().to_vec()
+        } else {
+            vec![0x30]
+        }
+    }
+}
+
 pub fn content_size_parser(s: &[u8]) -> IResult<&[u8], ContentSize> {
     map(alt((tag_no_case("NIL"), digit1)), |val: &[u8]| {
         if val.to_ascii_lowercase() == b"nil" {
@@ -413,5 +424,10 @@ mod tests {
     fn test_content_size_1() {
         assert_eq!(content_size_parser(b"1234").unwrap().1, ContentSize(Some(1234)));
         assert_eq!(content_size_parser(b"nil").unwrap().1, ContentSize(None));
+    }
+    #[test]
+    fn test_content_size_2() {
+        assert_eq!(content_size_parser(b"1234").unwrap().1.get_text(), b"1234");
+        assert_eq!(content_size_parser(b"nil").unwrap().1.get_text(), b"0");
     }
 }
