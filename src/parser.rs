@@ -5,7 +5,7 @@ use nom::{
     bytes::complete::{tag, tag_no_case, take_till},
     character::complete::digit1,
     combinator::{map, opt},
-    multi::{many1, separated_list1, separated_list0},
+    multi::{many1, separated_list1},
     sequence::{delimited, tuple},
 };
 use crate::sequence;
@@ -640,14 +640,6 @@ pub fn multi_body_parser(s: &[u8]) -> IResult<&[u8], MultiBody> {
             parameters: parameters,
         },
     )(s)
-}
-
-pub fn sequence_numbers_parser(s: &[u8]) -> IResult<&[u8], Vec<usize>> {
-    map(separated_list0(tag(b"."), map(digit1, |x| {
-        let d = from_utf8(x).unwrap();
-        let num = str::parse::<usize>(d).unwrap();
-        num
-    })), |x| x)(s)
 }
 
 #[cfg(test)]
@@ -1437,12 +1429,6 @@ mod tests {
             body.set_raw_header(b"Date: Fri, 24 Nov 2023 22:06:45 +0800\r\nFrom: shnetopt@esunny.cc\r\nTo: shenshiming@esunny.cc\r\nSubject: =?utf-8?B?5LiK5rW3572R57uc6L+Q57u06YOoLVphYmJpeOaVhemanA==?=".to_vec());
             assert_eq!(body.get_text(), b"Date: Fri, 24 Nov 2023 22:06:45 +0800\r\nFrom: shnetopt@esunny.cc\r\nTo: shenshiming@esunny.cc\r\nSubject: =?utf-8?B?5LiK5rW3572R57uc6L+Q57u06YOoLVphYmJpeOaVhemanA==?=\r\nContent-Type: TEXT/PLAIN;\r\n        CHARSET=\"utf-8\"\r\nContent-Transfer-Encoding: 8BIT\r\n\r\nThis is a TEST.\r\n");
         }
-    }
-    #[test]
-    fn test_sequence_numbers_parser() {
-        assert_eq!(sequence_numbers_parser(b"1.1").unwrap().1, vec![1, 1]);
-        assert_eq!(sequence_numbers_parser(b"1.2").unwrap().1, vec![1, 2]);
-        assert_eq!(sequence_numbers_parser(b"1.1.5").unwrap().1, vec![1, 1, 5]);
     }
     #[test]
     fn test_set_data_in_multi_body() {
