@@ -534,6 +534,17 @@ impl Body {
             }
         }
     }
+
+    pub fn get_text(&self) -> Vec<u8> {
+        match self {
+            Body::Single(body) => {
+                body.get_text()
+            }
+            Body::Multi(body) => {
+                body.get_text()
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -569,6 +580,33 @@ impl MultiBody {
                 }
             }
         }
+    }
+
+    pub fn get_text(&self) -> Vec<u8> {
+        let mut result = b"Content-Type: ".to_vec();
+        let mut boundary :Vec<u8> = vec![];
+        result.append(&mut b"multipart/".to_vec());
+        result.append(&mut self.content_type.clone());
+        for param in &self.parameters.list {
+            result.extend_from_slice(b";\r\n");
+            result.extend_from_slice(b"        ");
+            result.extend(param.get_content_type_text().iter());
+            if param.attribute.clone().to_ascii_lowercase() == b"boundary" {
+                boundary = param.value.clone();
+            }
+        }
+        for part in self.parts.iter() {
+            result.extend_from_slice(b"\r\n");
+            result.extend_from_slice(b"--");
+            result.append(&mut boundary.to_owned());
+            result.extend_from_slice(b"\r\n");
+            result.append(&mut part.get_text());
+        }
+        result.extend_from_slice(b"\r\n");
+        result.extend_from_slice(b"--");
+        result.append(&mut boundary.to_owned());
+        result.extend_from_slice(b"\r\n");
+        result
     }
 }
 
@@ -1413,5 +1451,10 @@ mod tests {
         assert_eq!(set_result, true);
         let set_result_2 = multi_body.set_data(sequence_numbers_parser(b"1.3").unwrap().1, data);
         assert_eq!(set_result_2, false);
+    }
+    #[test]
+    fn test_body_get_text() {
+        let multi_body = body_parser(br#"((("text" "plain" ("charset" "GB2312") NIL NIL "base64" 84 2 NIL NIL NIL NIL)("text" "html" ("charset" "GB2312") NIL NIL "quoted-printable" 629 8 NIL NIL NIL NIL) "alternative" ("boundary" "----=_002_NextPart034528600178_=----") NIL NIL NIL)("application" "octet-stream" ("name" "FB679764.tar") NIL NIL "base64" 664200 NIL ("attachment" ("filename" "FB679764.tar")) NIL NIL) "mixed" ("boundary" "----=_001_NextPart655111288810_=----") NIL NIL NIL)"#).unwrap().1;
+        println!("{:?}", multi_body.get_text());
     }
 }
