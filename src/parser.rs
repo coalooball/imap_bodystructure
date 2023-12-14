@@ -1,5 +1,4 @@
 use std::str::from_utf8;
-
 pub use nom::IResult;
 use nom::{
     branch::alt,
@@ -10,6 +9,12 @@ use nom::{
     sequence::{delimited, tuple},
 };
 
+/// ```rust
+/// # use imap_bodystructure::parser::head_bodystructure;
+/// let bodystructure_text = br#"BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL)"#.as_ref();
+/// let body_text_within_parentheses = head_bodystructure(&bodystructure_text).unwrap().0;
+/// assert_eq!(body_text_within_parentheses, br#"("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL)"#.as_ref());
+/// ```
 pub fn head_bodystructure(s: &[u8]) -> IResult<&[u8], &[u8]> {
     map(
         tuple((tag_no_case(b"BODYSTRUCTURE"), many1(tag(b" ")))),
@@ -528,7 +533,7 @@ pub fn multi_body_parser(s: &[u8]) -> IResult<&[u8], MultiBody> {
 #[cfg(test)]
 mod tests {
     use std::vec;
-
+    use crate::preparser;
     use super::*;
 
     #[test]
@@ -1251,5 +1256,47 @@ mod tests {
                 }] 
             } })
         );
+    }
+    #[test]
+    fn test_stremline_1() {
+        let text = br#"* 50000 FETCH (BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL))"#.to_vec();
+        let bodystructure_text = preparser::extract_bodystructure(&text);
+        assert_eq!(bodystructure_text, br#"BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL)"#.to_vec());
+        let body_text_within_parentheses = head_bodystructure(&bodystructure_text).unwrap().0;
+        assert_eq!(body_text_within_parentheses, br#"("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL)"#.as_ref());
+        let body_tmp = Body::Single(SingleBody {
+            content_type: ContentTypeHeaderField {
+                ttype: ContentTypeTypeAndSubType {
+                    ttype: b"TEXT".to_vec(),
+                    subtype: b"PLAIN".to_vec()
+                },
+                parameters: Parameters {
+                    list: vec![Parameter {
+                        attribute: b"CHARSET".to_vec(),
+                        value: b"utf-8".to_vec()
+                    }]
+                }
+            },
+            content_id: ContentIDHeaderField {
+                value: None
+            },
+            content_description: ContentDescriptionHeaderField { value: None },
+            content_transfer_encoding: ContentTransferEncodingHeaderField {
+                value: b"8BIT".to_vec()
+            },
+            content_size: ContentSize(Some(393), Some(9)),
+            content_md5: ContentMD5HeaderField {
+                value: None
+            },
+            content_disposition: ContentDispositionHeaderField {
+                value: None,
+                parameters: Parameters { list: vec![
+                ] }
+            },
+            content_language: ContentLanguageHeaderField { value: None },
+            content_location: ContentLocationHeaderField { value: None },
+            data: vec![]
+        });
+        assert_eq!(body_parser(body_text_within_parentheses).unwrap().1, body_tmp);
     }
 }
