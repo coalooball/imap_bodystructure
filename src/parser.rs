@@ -528,6 +528,10 @@ pub enum Body {
 }
 
 impl Body {
+    /// If the 'body' is only single, it will write data regardless of what the 'Sequence' is. 
+    /// If the currently found 'body' is single and the 'Sequence' is not empty, 
+    /// it will not continue searching and will directly write the data. 
+    /// So, if '1.1' is a single body, '1.1.2' or '1.1.1.1.1.1' will both be written in this body.
     pub fn set_data(&mut self, sequence: sequence::Sequence, data: Vec<u8> ) -> bool {
         match self {
             Body::Single(body) => {
@@ -571,29 +575,48 @@ pub struct MultiBody {
 }
 
 impl MultiBody {
+    /// If the 'body' is only single, it will write data regardless of what the 'Sequence' is. 
+    /// If the currently found 'body' is single and the 'Sequence' is not empty, 
+    /// it will not continue searching and will directly write the data. 
+    /// So, if '1.1' is a single body, '1.1.2' or '1.1.1.1.1.1' will both be written in this body.
     pub fn set_data(&mut self, mut sequence: sequence::Sequence, data: Vec<u8>) -> bool {
-        if sequence.len() == 1 {
-            let tmp_idx = sequence.pop().unwrap();
-            if self.parts.len() < tmp_idx {
-                return false
-            } else {
-                if let Body::Single(ref mut body) = self.parts[tmp_idx - 1] {
-                    body.set_data(data);
-                    return true
-                } else {
-                    return false
-                }
-            }
+        // if sequence.len() == 1 {
+        //     let tmp_idx = sequence.pop().unwrap();
+        //     if self.parts.len() < tmp_idx {
+        //         return false
+        //     } else {
+        //         if let Body::Single(ref mut body) = self.parts[tmp_idx - 1] {
+        //             body.set_data(data);
+        //             return true
+        //         } else {
+        //             return false
+        //         }
+        //     }
+        // } else {
+        //     let tmp_idx = sequence.pop().unwrap();
+        //     if self.parts.len() < tmp_idx {
+        //         return false
+        //     } else {
+        //         if let Body::Multi(ref mut body) = self.parts[tmp_idx - 1] {
+        //             body.set_data(sequence, data)
+        //         } else {
+        //             return false
+        //         }
+        //     }
+        // }
+        if sequence.is_empty() {
+            false
         } else {
             let tmp_idx = sequence.pop().unwrap();
             if self.parts.len() < tmp_idx {
-                return false
+                false
+            } else if let Body::Single(ref mut body) = self.parts[tmp_idx - 1] {
+                body.set_data(data);
+                true
+            } else if let Body::Multi(ref mut body) = self.parts[tmp_idx - 1]{
+                body.set_data(sequence, data)
             } else {
-                if let Body::Multi(ref mut body) = self.parts[tmp_idx - 1] {
-                    body.set_data(sequence, data)
-                } else {
-                    return false
-                }
+                false
             }
         }
     }
@@ -1462,6 +1485,18 @@ mod tests {
         assert_eq!(set_result, true);
         let set_result_2 = multi_body.set_data(sequence::Sequence::new(b"1.3").unwrap(), data);
         assert_eq!(set_result_2, false);
+    }
+    #[test]
+    fn test_set_data_in_multi_body_2() {
+        let mut multi_body = body_parser(br#"((("text" "plain" ("charset" "GB2312") NIL NIL "base64" 84 2 NIL NIL NIL NIL)("text" "html" ("charset" "GB2312") NIL NIL "quoted-printable" 629 8 NIL NIL NIL NIL) "alternative" ("boundary" "----=_002_NextPart034528600178_=----") NIL NIL NIL)("application" "octet-stream" ("name" "FB679764.tar") NIL NIL "base64" 664200 NIL ("attachment" ("filename" "FB679764.tar")) NIL NIL) "mixed" ("boundary" "----=_001_NextPart655111288810_=----") NIL NIL NIL)"#).unwrap().1;
+        let data = b"test".to_vec();
+        let set_result = multi_body.set_data(sequence::Sequence::new(b"1.1.32432").unwrap(), data.clone());
+        assert_eq!(set_result, true);
+        let set_result_2 = multi_body.set_data(sequence::Sequence::new(b"1.2.2.2").unwrap(), data.clone());
+        assert_eq!(set_result_2, true);
+        let set_result_3 = multi_body.set_data(sequence::Sequence::new(b"2.2").unwrap(), data);
+        assert_eq!(set_result_3, true);
+        assert_eq!(multi_body.are_all_bodies_with_data(), true);
     }
     #[test]
     fn test_bodies_are_all_have_data() {
