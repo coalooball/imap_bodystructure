@@ -435,6 +435,10 @@ impl SingleBody {
         self.raw_header = data;
     }
 
+    pub fn is_with_data(&self) -> bool {
+        !self.data.is_empty()
+    }
+
     pub fn get_text(&self) -> Vec<u8> {
         let mut full_text: Vec<u8> = vec![];
         full_text.append(&mut self.raw_header.clone());
@@ -546,6 +550,17 @@ impl Body {
             }
         }
     }
+
+    pub fn are_all_bodies_with_data(&self) -> bool {
+        match self {
+            Body::Single(body) => {
+                body.is_with_data()
+            }
+            Body::Multi(body) => {
+                body.are_all_bodies_with_data()
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -608,6 +623,15 @@ impl MultiBody {
         result.append(&mut boundary.to_owned());
         result.extend_from_slice(b"\r\n");
         result
+    }
+
+    pub fn are_all_bodies_with_data(&self) -> bool {
+        for i in self.parts.iter() {
+            if !i.are_all_bodies_with_data() {
+                return false
+            }
+        }
+        true
     }
 }
 
@@ -1438,6 +1462,16 @@ mod tests {
         assert_eq!(set_result, true);
         let set_result_2 = multi_body.set_data(sequence::Sequence::new(b"1.3").unwrap(), data);
         assert_eq!(set_result_2, false);
+    }
+    #[test]
+    fn test_bodies_are_all_have_data() {
+        let mut body = body_parser(br#"((("text" "plain" ("charset" "GB2312") NIL NIL "base64" 84 2 NIL NIL NIL NIL)("text" "html" ("charset" "GB2312") NIL NIL "quoted-printable" 629 8 NIL NIL NIL NIL) "alternative" ("boundary" "----=_002_NextPart034528600178_=----") NIL NIL NIL)("application" "octet-stream" ("name" "FB679764.tar") NIL NIL "base64" 664200 NIL ("attachment" ("filename" "FB679764.tar")) NIL NIL) "mixed" ("boundary" "----=_001_NextPart655111288810_=----") NIL NIL NIL)"#).unwrap().1;
+        let data = b"test".to_vec();
+        body.set_data(sequence::Sequence::new(b"1.1").unwrap(), data.clone());
+        assert_eq!(body.are_all_bodies_with_data(), false);
+        body.set_data(sequence::Sequence::new(b"1.2").unwrap(), data.clone());
+        body.set_data(sequence::Sequence::new(b"2").unwrap(), data.clone());
+        assert_eq!(body.are_all_bodies_with_data(), true);
     }
     #[test]
     fn test_body_get_text() {
