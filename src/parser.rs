@@ -522,11 +522,54 @@ pub enum Body {
     Multi(MultiBody),
 }
 
+impl Body {
+    pub fn set_data(&mut self, sequence_number: Vec<usize>, data: Vec<u8> ) -> bool {
+        match self {
+            Body::Single(body) => {
+                body.set_data(data);
+                true
+            }
+            Body::Multi(body) => {
+                body.set_data(sequence_number, data)
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct MultiBody {
     pub parts: Vec<Body>,
     pub content_type: Vec<u8>,
     pub parameters: Parameters,
+}
+
+impl MultiBody {
+    pub fn set_data(&mut self, mut sequence_number: Vec<usize>, data: Vec<u8>) -> bool {
+        if sequence_number.len() == 1 {
+            let tmp_idx = sequence_number[0];
+            if self.parts.len() < tmp_idx {
+                return false
+            } else {
+                if let Body::Single(ref mut body) = self.parts[tmp_idx - 1] {
+                    body.set_data(data);
+                    return true
+                } else {
+                    return false
+                }
+            }
+        } else {
+            let tmp_idx = sequence_number.remove(0);
+            if self.parts.len() < tmp_idx {
+                return false
+            } else {
+                if let Body::Multi(ref mut body) = self.parts[tmp_idx - 1] {
+                    body.set_data(sequence_number, data)
+                } else {
+                    return false
+                }
+            }
+        }
+    }
 }
 
 pub fn body_parser(s: &[u8]) -> IResult<&[u8], Body> {
@@ -1361,5 +1404,14 @@ mod tests {
         assert_eq!(sequence_numbers_parser(b"1.1").unwrap().1, vec![1, 1]);
         assert_eq!(sequence_numbers_parser(b"1.2").unwrap().1, vec![1, 2]);
         assert_eq!(sequence_numbers_parser(b"1.1.5").unwrap().1, vec![1, 1, 5]);
+    }
+    #[test]
+    fn test_set_data_in_multi_body() {
+        let mut multi_body = body_parser(br#"((("text" "plain" ("charset" "GB2312") NIL NIL "base64" 84 2 NIL NIL NIL NIL)("text" "html" ("charset" "GB2312") NIL NIL "quoted-printable" 629 8 NIL NIL NIL NIL) "alternative" ("boundary" "----=_002_NextPart034528600178_=----") NIL NIL NIL)("application" "octet-stream" ("name" "FB679764.tar") NIL NIL "base64" 664200 NIL ("attachment" ("filename" "FB679764.tar")) NIL NIL) "mixed" ("boundary" "----=_001_NextPart655111288810_=----") NIL NIL NIL)"#).unwrap().1;
+        let data = b"test".to_vec();
+        let set_result = multi_body.set_data(sequence_numbers_parser(b"1.1").unwrap().1, data.clone());
+        assert_eq!(set_result, true);
+        let set_result_2 = multi_body.set_data(sequence_numbers_parser(b"1.3").unwrap().1, data);
+        assert_eq!(set_result_2, false);
     }
 }
