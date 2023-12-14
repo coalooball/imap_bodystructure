@@ -1081,5 +1081,175 @@ mod tests {
                 },
             })
         );
+        assert_eq!(body_parser(br#"(("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL)"#).unwrap().1,
+            Body::Multi(MultiBody {
+                parts: vec![
+                    Body::Single(SingleBody {
+                        content_type: ContentTypeHeaderField {
+                            ttype: ContentTypeTypeAndSubType {
+                                ttype: b"text".to_vec(),
+                                subtype: b"html".to_vec()
+                            },
+                            parameters: Parameters {
+                                list: vec![Parameter {
+                                    attribute: b"charset".to_vec(),
+                                    value: b"utf-8".to_vec()
+                                }]
+                            }
+                        },
+                        content_id: ContentIDHeaderField {
+                            value: None
+                        },
+                        content_description: ContentDescriptionHeaderField { value: None },
+                        content_transfer_encoding: ContentTransferEncodingHeaderField {
+                            value: b"base64".to_vec()
+                        },
+                        content_size: ContentSize(Some(1188), Some(16)),
+                        content_md5: ContentMD5HeaderField {
+                            value: None
+                        },
+                        content_disposition: ContentDispositionHeaderField {
+                            value: None,
+                            parameters: Parameters { list: vec![
+                            ] }
+                        },
+                        content_language: ContentLanguageHeaderField { value: None },
+                        content_location: ContentLocationHeaderField { value: None },
+                        data: vec![]
+                    }),
+                ],
+                content_type: b"mixed".to_vec(),
+                parameters: Parameters {
+                    list: vec![Parameter {
+                        attribute: b"boundary".to_vec(),
+                        value: b"===============1522363357941492443==".to_vec()
+                    }]
+                },
+            })
+        );
+        assert_eq!(body_parser(br#"((("text" "plain" ("charset" "GB2312") NIL NIL "base64" 84 2 NIL NIL NIL NIL)("text" "html" ("charset" "GB2312") NIL NIL "quoted-printable" 629 8 NIL NIL NIL NIL) "alternative" ("boundary" "----=_002_NextPart034528600178_=----") NIL NIL NIL)("application" "octet-stream" ("name" "FB679764.tar") NIL NIL "base64" 664200 NIL ("attachment" ("filename" "FB679764.tar")) NIL NIL) "mixed" ("boundary" "----=_001_NextPart655111288810_=----") NIL NIL NIL)"#).unwrap().1,
+            Body::Multi(MultiBody { parts: vec![
+                Body::Multi(MultiBody {
+                    parts: vec![
+                        Body::Single(SingleBody {
+                            content_type: ContentTypeHeaderField {
+                                ttype: ContentTypeTypeAndSubType {
+                                    ttype: b"text".to_vec(),
+                                    subtype: b"plain".to_vec()
+                                },
+                                parameters: Parameters {
+                                    list: vec![Parameter {
+                                        attribute: b"charset".to_vec(),
+                                        value: b"GB2312".to_vec()
+                                    }]
+                                }
+                            },
+                            content_id: ContentIDHeaderField {
+                                value: None
+                            },
+                            content_description: ContentDescriptionHeaderField { value: None },
+                            content_transfer_encoding: ContentTransferEncodingHeaderField {
+                                value: b"base64".to_vec()
+                            },
+                            content_size: ContentSize(Some(84), Some(2)),
+                            content_md5: ContentMD5HeaderField {
+                                value: None
+                            },
+                            content_disposition: ContentDispositionHeaderField {
+                                value: None,
+                                parameters: Parameters { list: vec![
+                                ] }
+                            },
+                            content_language: ContentLanguageHeaderField { value: None },
+                            content_location: ContentLocationHeaderField { value: None },
+                            data: vec![]
+                        }),
+                        Body::Single(SingleBody {
+                            content_type: ContentTypeHeaderField {
+                                ttype: ContentTypeTypeAndSubType {
+                                    ttype: b"text".to_vec(),
+                                    subtype: b"html".to_vec()
+                                },
+                                parameters: Parameters {
+                                    list: vec![Parameter {
+                                        attribute: b"charset".to_vec(),
+                                        value: b"GB2312".to_vec()
+                                    }]
+                                }
+                            },
+                            content_id: ContentIDHeaderField {
+                                value: None
+                            },
+                            content_description: ContentDescriptionHeaderField { value: None },
+                            content_transfer_encoding: ContentTransferEncodingHeaderField {
+                                value: b"quoted-printable".to_vec()
+                            },
+                            content_size: ContentSize(Some(629), Some(8)),
+                            content_md5: ContentMD5HeaderField {
+                                value: None
+                            },
+                            content_disposition: ContentDispositionHeaderField {
+                                value: None,
+                                parameters: Parameters { list: vec![
+                                ] }
+                            },
+                            content_language: ContentLanguageHeaderField { value: None },
+                            content_location: ContentLocationHeaderField { value: None },
+                            data: vec![]
+                        }),
+                    ],
+                    content_type: b"alternative".to_vec(),
+                    parameters: Parameters {
+                        list: vec![Parameter {
+                            attribute: b"boundary".to_vec(),
+                            value: b"----=_002_NextPart034528600178_=----".to_vec()
+                        }]
+                    },
+                }),
+                Body::Single(SingleBody {
+                    content_type: ContentTypeHeaderField {
+                        ttype: ContentTypeTypeAndSubType {
+                            ttype: b"application".to_vec(),
+                            subtype: b"octet-stream".to_vec()
+                        },
+                        parameters: Parameters {
+                            list: vec![Parameter {
+                                attribute: b"name".to_vec(),
+                                value: b"FB679764.tar".to_vec()
+                            }]
+                        }
+                    },
+                    content_id: ContentIDHeaderField {
+                        value: None
+                    },
+                    content_description: ContentDescriptionHeaderField { value: None },
+                    content_transfer_encoding: ContentTransferEncodingHeaderField {
+                        value: b"base64".to_vec()
+                    },
+                    content_size: ContentSize(Some(664200), None),
+                    content_md5: ContentMD5HeaderField {
+                        value: None
+                    },
+                    content_disposition: ContentDispositionHeaderField {
+                        value: Some(b"attachment".to_vec()),
+                        parameters: Parameters { list: vec![
+                            Parameter {
+                                attribute: b"filename".to_vec(),
+                                value: b"FB679764.tar".to_vec()
+                            }
+                        ] }
+                    },
+                    content_language: ContentLanguageHeaderField { value: None },
+                    content_location: ContentLocationHeaderField { value: None },
+                    data: vec![]
+                })
+
+            ], content_type: b"mixed".to_vec(), parameters: Parameters {
+                list: vec![Parameter{
+                    attribute: b"boundary".to_vec(),
+                    value: b"----=_001_NextPart655111288810_=----".to_vec()
+                }] 
+            } })
+        );
     }
 }
