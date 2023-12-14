@@ -481,6 +481,50 @@ pub fn single_body_parser(s: &[u8]) -> IResult<&[u8], SingleBody> {
     )(s)
 }
 
+#[derive(Debug, PartialEq)]
+pub enum Body {
+    Single(SingleBody),
+    Multi(MultiBody),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct MultiBody {
+    pub parts: Vec<Body>,
+    pub content_type: Vec<u8>,
+    pub parameters: Parameters,
+}
+
+pub fn body_parser(s: &[u8]) -> IResult<&[u8], Body> {
+    alt((
+        map(single_body_parser, Body::Single),
+        map(multi_body_parser, Body::Multi),
+    ))(s)
+}
+
+pub fn multi_body_parser(s: &[u8]) -> IResult<&[u8], MultiBody> {
+    map(
+        delimited(
+            tag(b"("),
+            tuple((
+                many1(body_parser),
+                tag(b" "),
+                double_quoted_string,
+                tag(b" "),
+                parameters,
+                opt(tuple((tag(b" "), tag_no_case("NIL")))),
+                opt(tuple((tag(b" "), tag_no_case("NIL")))),
+                opt(tuple((tag(b" "), tag_no_case("NIL")))),
+            )),
+            tag(b")"),
+        ),
+        |(parts, _, content_type, _, parameters, _, _, _)| MultiBody {
+            parts: parts,
+            content_type: content_type.to_vec(),
+            parameters: parameters,
+        },
+    )(s)
+}
+
 #[cfg(test)]
 mod tests {
     use std::vec;
@@ -953,6 +997,89 @@ mod tests {
                 content_location: ContentLocationHeaderField { value: None },
                 data: vec![]
             }
+        );
+    }
+    #[test]
+    fn test_body_parser() {
+        assert_eq!(
+        body_parser(br#"(("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "7BIT" 2279 48 NIL ("INLINE" NIL) NIL)("TEXT" "HTML" ("CHARSET" "UTF-8") NIL NIL "QUOTED-PRINTABLE" 3421 67 NIL ("INLINE" NIL) NIL) "ALTERNATIVE" ("BOUNDARY" "----=_Part_526379_2891879.1572458037114") NIL)"#).unwrap().1,
+            Body::Multi(MultiBody {
+                parts: vec![
+                    Body::Single(SingleBody {
+                        content_type: ContentTypeHeaderField {
+                            ttype: ContentTypeTypeAndSubType {
+                                ttype: b"TEXT".to_vec(),
+                                subtype: b"PLAIN".to_vec()
+                            },
+                            parameters: Parameters {
+                                list: vec![Parameter {
+                                    attribute: b"CHARSET".to_vec(),
+                                    value: b"UTF-8".to_vec()
+                                }]
+                            }
+                        },
+                        content_id: ContentIDHeaderField {
+                            value: None
+                        },
+                        content_description: ContentDescriptionHeaderField { value: None },
+                        content_transfer_encoding: ContentTransferEncodingHeaderField {
+                            value: b"7BIT".to_vec()
+                        },
+                        content_size: ContentSize(Some(2279), Some(48)),
+                        content_md5: ContentMD5HeaderField {
+                            value: None
+                        },
+                        content_disposition: ContentDispositionHeaderField {
+                            value: Some(b"INLINE".to_vec()),
+                            parameters: Parameters { list: vec![
+                            ] }
+                        },
+                        content_language: ContentLanguageHeaderField { value: None },
+                        content_location: ContentLocationHeaderField { value: None },
+                        data: vec![]
+                    }),
+                    Body::Single(SingleBody {
+                        content_type: ContentTypeHeaderField {
+                            ttype: ContentTypeTypeAndSubType {
+                                ttype: b"TEXT".to_vec(),
+                                subtype: b"HTML".to_vec()
+                            },
+                            parameters: Parameters {
+                                list: vec![Parameter {
+                                    attribute: b"CHARSET".to_vec(),
+                                    value: b"UTF-8".to_vec()
+                                }]
+                            }
+                        },
+                        content_id: ContentIDHeaderField {
+                            value: None
+                        },
+                        content_description: ContentDescriptionHeaderField { value: None },
+                        content_transfer_encoding: ContentTransferEncodingHeaderField {
+                            value: b"QUOTED-PRINTABLE".to_vec()
+                        },
+                        content_size: ContentSize(Some(3421), Some(67)),
+                        content_md5: ContentMD5HeaderField {
+                            value: None
+                        },
+                        content_disposition: ContentDispositionHeaderField {
+                            value: Some(b"INLINE".to_vec()),
+                            parameters: Parameters { list: vec![
+                            ] }
+                        },
+                        content_language: ContentLanguageHeaderField { value: None },
+                        content_location: ContentLocationHeaderField { value: None },
+                        data: vec![]
+                    })
+                ],
+                content_type: b"ALTERNATIVE".to_vec(),
+                parameters: Parameters {
+                    list: vec![Parameter {
+                        attribute: b"BOUNDARY".to_vec(),
+                        value: b"----=_Part_526379_2891879.1572458037114".to_vec()
+                    }]
+                },
+            })
         );
     }
 }
