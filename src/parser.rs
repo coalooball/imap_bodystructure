@@ -422,6 +422,35 @@ pub struct SingleBody {
     pub content_language: ContentLanguageHeaderField,
     pub content_location: ContentLocationHeaderField,
     pub data: Vec<u8>,
+    pub raw_header: Vec<u8>
+}
+
+impl SingleBody {
+    pub fn set_data(&mut self, data: Vec<u8>) {
+        self.data = data;
+    }
+
+    pub fn set_raw_header(&mut self, data: Vec<u8>){
+        self.raw_header = data;
+    }
+
+    pub fn get_text(&self) -> Vec<u8> {
+        let mut full_text: Vec<u8> = vec![];
+        full_text.append(&mut self.raw_header.clone());
+        full_text.extend_from_slice(b"\r\n");
+        full_text.append(&mut self.content_type.get_text());
+        full_text.append(&mut self.content_id.get_text().unwrap_or(vec![]));
+        full_text.append(&mut self.content_description.get_text().unwrap_or(vec![]));
+        full_text.append(&mut self.content_transfer_encoding.get_text());
+        full_text.append(&mut self.content_md5.get_text().unwrap_or(vec![]));
+        full_text.append(&mut self.content_disposition.get_text().unwrap_or(vec![]));
+        full_text.append(&mut self.content_language.get_text().unwrap_or(vec![]));
+        full_text.append(&mut self.content_location.get_text().unwrap_or(vec![]));
+        full_text.extend_from_slice(b"\r\n");
+        full_text.append(&mut self.data.clone());
+        full_text.extend_from_slice(b"\r\n");
+        full_text
+    }
 }
 
 pub fn single_body_parser(s: &[u8]) -> IResult<&[u8], SingleBody> {
@@ -482,6 +511,7 @@ pub fn single_body_parser(s: &[u8]) -> IResult<&[u8], SingleBody> {
                 ContentLocationHeaderField { value: None }
             },
             data: vec![],
+            raw_header: vec![],
         },
     )(s)
 }
@@ -913,7 +943,8 @@ mod tests {
                 },
                 content_language: ContentLanguageHeaderField { value: None },
                 content_location: ContentLocationHeaderField { value: None },
-                data: vec![]
+                data: vec![],
+                raw_header: vec![],
             }
         );
         assert_eq!(
@@ -956,7 +987,8 @@ mod tests {
                 },
                 content_language: ContentLanguageHeaderField { value: None },
                 content_location: ContentLocationHeaderField { value: None },
-                data: vec![]
+                data: vec![],
+                raw_header: vec![]
             }
         );
         // No Language and Location
@@ -1000,7 +1032,8 @@ mod tests {
                 },
                 content_language: ContentLanguageHeaderField { value: None },
                 content_location: ContentLocationHeaderField { value: None },
-                data: vec![]
+                data: vec![],
+                raw_header: vec![],
             }
         );
     }
@@ -1041,7 +1074,8 @@ mod tests {
                         },
                         content_language: ContentLanguageHeaderField { value: None },
                         content_location: ContentLocationHeaderField { value: None },
-                        data: vec![]
+                        data: vec![],
+                        raw_header: vec![],
                     }),
                     Body::Single(SingleBody {
                         content_type: ContentTypeHeaderField {
@@ -1074,7 +1108,8 @@ mod tests {
                         },
                         content_language: ContentLanguageHeaderField { value: None },
                         content_location: ContentLocationHeaderField { value: None },
-                        data: vec![]
+                        data: vec![],
+                        raw_header: vec![],
                     })
                 ],
                 content_type: b"ALTERNATIVE".to_vec(),
@@ -1120,7 +1155,8 @@ mod tests {
                         },
                         content_language: ContentLanguageHeaderField { value: None },
                         content_location: ContentLocationHeaderField { value: None },
-                        data: vec![]
+                        data: vec![],
+                        raw_header: vec![],
                     }),
                 ],
                 content_type: b"mixed".to_vec(),
@@ -1167,7 +1203,8 @@ mod tests {
                             },
                             content_language: ContentLanguageHeaderField { value: None },
                             content_location: ContentLocationHeaderField { value: None },
-                            data: vec![]
+                            data: vec![],
+                            raw_header: vec![],
                         }),
                         Body::Single(SingleBody {
                             content_type: ContentTypeHeaderField {
@@ -1200,7 +1237,8 @@ mod tests {
                             },
                             content_language: ContentLanguageHeaderField { value: None },
                             content_location: ContentLocationHeaderField { value: None },
-                            data: vec![]
+                            data: vec![],
+                            raw_header: vec![],
                         }),
                     ],
                     content_type: b"alternative".to_vec(),
@@ -1246,7 +1284,8 @@ mod tests {
                     },
                     content_language: ContentLanguageHeaderField { value: None },
                     content_location: ContentLocationHeaderField { value: None },
-                    data: vec![]
+                    data: vec![],
+                    raw_header: vec![],
                 })
 
             ], content_type: b"mixed".to_vec(), parameters: Parameters {
@@ -1295,8 +1334,18 @@ mod tests {
             },
             content_language: ContentLanguageHeaderField { value: None },
             content_location: ContentLocationHeaderField { value: None },
-            data: vec![]
+            data: vec![],
+            raw_header: vec![],
         });
         assert_eq!(body_parser(body_text_within_parentheses).unwrap().1, body_tmp);
+    }
+    #[test]
+    fn test_single_body_1() {
+        let body1 = body_parser(br#"("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL)"#).unwrap().1;
+        if let Body::Single(mut body) = body1 {
+            body.set_data(b"This is a TEST.".to_vec());
+            body.set_raw_header(b"Date: Fri, 24 Nov 2023 22:06:45 +0800\r\nFrom: shnetopt@esunny.cc\r\nTo: shenshiming@esunny.cc\r\nSubject: =?utf-8?B?5LiK5rW3572R57uc6L+Q57u06YOoLVphYmJpeOaVhemanA==?=".to_vec());
+            assert_eq!(body.get_text(), b"Date: Fri, 24 Nov 2023 22:06:45 +0800\r\nFrom: shnetopt@esunny.cc\r\nTo: shenshiming@esunny.cc\r\nSubject: =?utf-8?B?5LiK5rW3572R57uc6L+Q57u06YOoLVphYmJpeOaVhemanA==?=\r\nContent-Type: TEXT/PLAIN;\r\n        CHARSET=\"utf-8\"\r\nContent-Transfer-Encoding: 8BIT\r\n\r\nThis is a TEST.\r\n");
+        }
     }
 }
