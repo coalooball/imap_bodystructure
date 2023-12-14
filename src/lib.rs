@@ -51,5 +51,5 @@
 
 pub mod parser;
 // Get new SequenceNumbers
-pub mod sequence_number;
+pub mod sequence;
 pub mod preparser;
