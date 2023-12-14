@@ -3,23 +3,50 @@
 //! ### Examples
 //! Extract BODYSTRUCTURE
 //! ```rust
-//! use imap_bodystructure::preparser::extract_bodystructure;
-//! fn main() {
-//!     let target = br#"BODYSTRUCTURE (("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL)"#;
-//!     let text = br#"* 154 FETCH (UID 649 FLAGS () RFC822.SIZE 2394 INTERNALDATE "05-Dec-2023 06:16:58 +0000" BODYSTRUCTURE (("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL) BODY[HEADER.FIELDS (DATE SUBJECT FROM SENDER REPLY-TO TO CC BCC MESSAGE-ID REFERENCES IN-REPLY-TO X-MAILMASTER-SHOWONERCPT X-CUSTOM-MAIL-MASTER-SENT-ID DISPOSITION-NOTIFICATION-TO X-CM-CTRLMSGS)] {181}
-//!     Subject: =?utf-8?b?5L2g5aW9IDBiMGZiYjZkYmFmM2FmYmIgenFhLWVtYWls5rWL6K+V?=
-//!     From: liutianyu@nextcloud.games
-//!     To: shenzongxu@nextcloud.games
-//!     Date: Tue, 05 Dec 2023 06:16:58 -0000"#;
-//!     let bodystructure = extract_bodystructure(&text.to_vec());
-//!     assert_eq!(bodystructure, target);
-//! }
-//! ```
-//! Parse BODYSTRUCTURE
-//! ```rust
-//! # use imap_bodystructure::parser::head_bodystructure;
-//!  assert_eq!(head_bodystructure(br#"BODYSTRUCTURE (("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL)"#),
-//!  Ok((br#"(("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL)"#.as_ref(), b"BODYSTRUCTURE".as_ref())));
+//! # use imap_bodystructure::preparser;
+//! # use imap_bodystructure::parser::*;
+//! # fn main() {
+//! let text = br#"* 50000 FETCH (BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL))"#.to_vec();
+//! let bodystructure_text = preparser::extract_bodystructure(&text);
+//! assert_eq!(bodystructure_text, br#"BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL)"#.to_vec());
+//! let body_text_within_parentheses = head_bodystructure(&bodystructure_text).unwrap().0;
+//! assert_eq!(body_text_within_parentheses, br#"("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL)"#.as_ref());
+//! let body_tmp = Body::Single(SingleBody {
+//!     content_type: ContentTypeHeaderField {
+//!         ttype: ContentTypeTypeAndSubType {
+//!             ttype: b"TEXT".to_vec(),
+//!             subtype: b"PLAIN".to_vec()
+//!         },
+//!         parameters: Parameters {
+//!             list: vec![Parameter {
+//!                 attribute: b"CHARSET".to_vec(),
+//!                 value: b"utf-8".to_vec()
+//!             }]
+//!         }
+//!     },
+//!     content_id: ContentIDHeaderField {
+//!         value: None
+//!     },
+//!     content_description: ContentDescriptionHeaderField { value: None },
+//!     content_transfer_encoding: ContentTransferEncodingHeaderField {
+//!         value: b"8BIT".to_vec()
+//!     },
+//!     content_size: ContentSize(Some(393), Some(9)),
+//!     content_md5: ContentMD5HeaderField {
+//!         value: None
+//!     },
+//!     content_disposition: ContentDispositionHeaderField {
+//!         value: None,
+//!         parameters: Parameters { list: vec![
+//!         ] }
+//!     },
+//!     content_language: ContentLanguageHeaderField { value: None },
+//!     content_location: ContentLocationHeaderField { value: None },
+//!     data: vec![],
+//!     raw_header: vec![],
+//! });
+//! assert_eq!(body_parser(body_text_within_parentheses).unwrap().1, body_tmp);
+//! # }
 //! ```
 
 pub mod parser;

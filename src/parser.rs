@@ -32,8 +32,8 @@ pub fn double_quoted_string(s: &[u8]) -> IResult<&[u8], &[u8]> {
 
 #[derive(Debug, PartialEq)]
 pub struct Parameter {
-    attribute: Vec<u8>,
-    value: Vec<u8>,
+    pub attribute: Vec<u8>,
+    pub value: Vec<u8>,
 }
 
 impl Parameter {
@@ -48,7 +48,7 @@ impl Parameter {
 
 #[derive(Debug, PartialEq)]
 pub struct Parameters {
-    list: Vec<Parameter>,
+    pub list: Vec<Parameter>,
 }
 
 pub fn parameter(s: &[u8]) -> IResult<&[u8], Parameter> {
@@ -73,8 +73,8 @@ pub fn parameters(s: &[u8]) -> IResult<&[u8], Parameters> {
 
 #[derive(Debug, PartialEq)]
 pub struct ContentTypeTypeAndSubType {
-    ttype: Vec<u8>,
-    subtype: Vec<u8>,
+    pub ttype: Vec<u8>,
+    pub subtype: Vec<u8>,
 }
 
 impl ContentTypeTypeAndSubType {
@@ -98,8 +98,8 @@ pub fn content_type_main(s: &[u8]) -> IResult<&[u8], ContentTypeTypeAndSubType> 
 
 #[derive(Debug, PartialEq)]
 pub struct ContentTypeHeaderField {
-    ttype: ContentTypeTypeAndSubType,
-    parameters: Parameters,
+    pub ttype: ContentTypeTypeAndSubType,
+    pub parameters: Parameters,
 }
 
 impl ContentTypeHeaderField {
@@ -129,7 +129,7 @@ pub fn content_type_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentTypeH
 /// RFC 2046
 #[derive(Debug, PartialEq)]
 pub struct ContentIDHeaderField {
-    value: Option<Vec<u8>>,
+    pub value: Option<Vec<u8>>,
 }
 
 impl ContentIDHeaderField {
@@ -159,7 +159,7 @@ pub fn content_id_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentIDHeade
 /// RFC 2047
 #[derive(Debug, PartialEq)]
 pub struct ContentDescriptionHeaderField {
-    value: Option<Vec<u8>>,
+    pub value: Option<Vec<u8>>,
 }
 
 impl ContentDescriptionHeaderField {
@@ -189,7 +189,7 @@ pub fn content_description_header_field_parser(
 }
 #[derive(Debug, PartialEq)]
 pub struct ContentTransferEncodingHeaderField {
-    value: Vec<u8>,
+    pub value: Vec<u8>,
 }
 
 impl ContentTransferEncodingHeaderField {
@@ -212,7 +212,7 @@ pub fn content_transfer_encoding_header_field_parser(
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ContentSize(Option<usize>, Option<usize>);
+pub struct ContentSize(pub Option<usize>, pub Option<usize>);
 
 impl ContentSize {
     pub fn get_text(&self) -> Vec<u8> {
@@ -266,7 +266,7 @@ pub fn content_size_parser(s: &[u8]) -> IResult<&[u8], ContentSize> {
 
 #[derive(Debug, PartialEq)]
 pub struct ContentMD5HeaderField {
-    value: Option<Vec<u8>>,
+    pub value: Option<Vec<u8>>,
 }
 
 impl ContentMD5HeaderField {
@@ -292,8 +292,8 @@ pub fn content_md5_header_field_parser(s: &[u8]) -> IResult<&[u8], ContentMD5Hea
 }
 #[derive(Debug, PartialEq)]
 pub struct ContentDispositionHeaderField {
-    value: Option<Vec<u8>>,
-    parameters: Parameters,
+    pub value: Option<Vec<u8>>,
+    pub parameters: Parameters,
 }
 // rfc2183
 impl ContentDispositionHeaderField {
@@ -354,7 +354,7 @@ pub fn content_disposition_header_field_parser_0(
 // RFC 1766
 #[derive(Debug, PartialEq)]
 pub struct ContentLanguageHeaderField {
-    value: Option<Vec<u8>>,
+    pub value: Option<Vec<u8>>,
 }
 
 impl ContentLanguageHeaderField {
@@ -384,7 +384,7 @@ pub fn content_language_header_field_parser(
 // RFC 2557
 #[derive(Debug, PartialEq)]
 pub struct ContentLocationHeaderField {
-    value: Option<Vec<u8>>,
+    pub value: Option<Vec<u8>>,
 }
 
 impl ContentLocationHeaderField {
