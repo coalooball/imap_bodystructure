@@ -3,11 +3,11 @@
 //! ### Examples
 //! Extract BODYSTRUCTURE
 //! ```rust
-//! # use imap_bodystructure::preparser;
+//! # use imap_bodystructure::extractor;
 //! # use imap_bodystructure::parser::*;
 //! # fn main() {
 //! let text = br#"* 50000 FETCH (BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL))"#.to_vec();
-//! let bodystructure_text = preparser::extract_bodystructure(&text);
+//! let bodystructure_text = extractor::extract_bodystructure(&text);
 //! assert_eq!(bodystructure_text, br#"BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL)"#.to_vec());
 //! let body_text_within_parentheses = head_bodystructure(&bodystructure_text).unwrap().0;
 //! assert_eq!(body_text_within_parentheses, br#"("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL)"#.as_ref());
@@ -53,4 +53,4 @@ pub mod parser;
 // Get new SequenceNumbers
 pub mod sequence;
 pub mod preparser;
-pub mod response_parser;
+pub mod extractor;

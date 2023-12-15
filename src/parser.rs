@@ -705,7 +705,7 @@ pub fn multi_body_parser(s: &[u8]) -> IResult<&[u8], MultiBody> {
 #[cfg(test)]
 mod tests {
     use std::vec;
-    use crate::{preparser, sequence::Sequence};
+    use crate::{extractor, sequence::Sequence};
     use super::*;
 
     #[test]
@@ -1445,7 +1445,7 @@ mod tests {
     #[test]
     fn test_stremline_1() {
         let text = br#"* 50000 FETCH (BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL))"#.to_vec();
-        let bodystructure_text = preparser::extract_bodystructure(&text);
+        let bodystructure_text = extractor::extract_bodystructure(&text);
         assert_eq!(bodystructure_text, br#"BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL)"#.to_vec());
         let body_text_within_parentheses = head_bodystructure(&bodystructure_text).unwrap().0;
         assert_eq!(body_text_within_parentheses, br#"("TEXT" "PLAIN" ("CHARSET" "utf-8") NIL NIL "8BIT" 393 9 NIL NIL NIL)"#.as_ref());
