@@ -26,13 +26,13 @@ impl Sequence {
     pub fn new(s: &[u8]) -> Result<Sequence, String> {
         if let Ok((_, sequence)) = sequence_parser(s) {
             if sequence.is_empty() {
-                return Err(String::from("Parsing sequence unscessfully."))
+                return Err(String::from("Parsing sequence unsuccessfully."))
             }
             let mut tmp: VecDeque<usize> = VecDeque::new();
             tmp.extend(sequence);
             Ok(Sequence(tmp))
         } else {
-            Err(String::from("Parsing sequence unscessfully."))
+            Err(String::from("Parsing sequence unsuccessfully."))
         }
     }
 
@@ -71,7 +71,7 @@ mod tests {
     }
     #[test]
     fn test_3() {
-        let target = String::from("Parsing sequence unscessfully.");
+        let target = String::from("Parsing sequence unsuccessfully.");
         let seq = Sequence::new(b"HEADER").unwrap_err();
         assert_eq!(seq.clone(), target);
     }

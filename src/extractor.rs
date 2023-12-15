@@ -74,11 +74,11 @@ pub fn split_multi_fetch_response(origin_vec: &mut Vec<u8>) -> Vec<Vec<u8>> {
     let mut left_idx = 0;
     let mut right_idx = 0;
     for i in iter {
+        right_idx += 1;
         if i == b")\r\n*".as_slice() {
             responses.push(origin_vec[left_idx..right_idx].to_vec());
             left_idx = right_idx;
         }
-        right_idx += 1;
     }
     responses.push(origin_vec[left_idx..].to_vec());
     return responses;
@@ -223,7 +223,7 @@ mod tests {
         let split_text1 = split_multi_fetch_response(&mut text);
         assert_eq!(
             split_text1,
-            vec![b"111".to_vec(), b")\r\n* feeffeef".to_vec()]
+            vec![b"111)".to_vec(), b"\r\n* feeffeef".to_vec()]
         )
     }
 
