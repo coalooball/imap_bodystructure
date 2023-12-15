@@ -19,7 +19,7 @@ pub fn sequence_parser(s: &[u8]) -> IResult<&[u8], Vec<usize>> {
     )(s)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Sequence(pub VecDeque<usize>);
 
 impl Sequence {
@@ -73,6 +73,6 @@ mod tests {
     fn test_3() {
         let target = String::from("Parsing sequence unscessfully.");
         let seq = Sequence::new(b"HEADER").unwrap_err();
-        assert_eq!(seq, target);
+        assert_eq!(seq.clone(), target);
     }
 }
