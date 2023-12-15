@@ -12,15 +12,15 @@ pub fn find_all_bodystructure_with_uid(s: &mut Vec<u8>) -> HashMap<Vec<u8>, pars
             continue;
         }
         let bodystructure_text = extractor::extract_bodystructure(response);
-        let body_text_within_parentheses =
-            parser::head_bodystructure(&bodystructure_text).unwrap().0;
-        let body_result = parser::body_parser(body_text_within_parentheses);
-        match body_result {
-            Ok((_, body)) => {
-                tmp_hashmap.insert(uid, body);
-            }
-            Err(_) => {
-                continue;
+        if let Ok((_, body_text_within_parentheses)) = parser::head_bodystructure(&bodystructure_text) {
+            let body_result = parser::body_parser(body_text_within_parentheses);
+            match body_result {
+                Ok((_, body)) => {
+                    tmp_hashmap.insert(uid, body);
+                }
+                Err(_) => {
+                    continue;
+                }
             }
         }
     }
