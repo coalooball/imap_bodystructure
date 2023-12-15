@@ -441,7 +441,10 @@ impl SingleBody {
 
     pub fn get_text(&self) -> Vec<u8> {
         let mut full_text: Vec<u8> = vec![];
-        full_text.append(&mut self.raw_header.clone());
+        if !self.raw_header.is_empty() {
+            dbg!(123211 as i64);
+            full_text.append(&mut self.raw_header.to_owned())
+        }
         full_text.extend_from_slice(b"\r\n");
         full_text.append(&mut self.content_type.get_text());
         full_text.append(&mut self.content_id.get_text().unwrap_or(vec![]));
@@ -572,6 +575,7 @@ pub struct MultiBody {
     pub parts: Vec<Body>,
     pub content_type: Vec<u8>,
     pub parameters: Parameters,
+    pub raw_header: Vec<u8>,
 }
 
 impl MultiBody {
@@ -622,7 +626,11 @@ impl MultiBody {
     }
 
     pub fn get_text(&self) -> Vec<u8> {
-        let mut result = b"Content-Type: ".to_vec();
+        let mut result: Vec<u8> = vec![];
+        if !self.raw_header.is_empty() {
+            result.append(&mut self.raw_header.to_owned())
+        }
+        result.append(&mut b"Content-Type: ".to_vec());
         let mut boundary :Vec<u8> = vec![];
         result.append(&mut b"multipart/".to_vec());
         result.append(&mut self.content_type.clone());
@@ -656,6 +664,10 @@ impl MultiBody {
         }
         true
     }
+
+    pub fn set_raw_header(&mut self, data: Vec<u8>){
+        self.raw_header = data;
+    }
 }
 
 pub fn body_parser(s: &[u8]) -> IResult<&[u8], Body> {
@@ -685,6 +697,7 @@ pub fn multi_body_parser(s: &[u8]) -> IResult<&[u8], MultiBody> {
             parts: parts,
             content_type: content_type.to_vec(),
             parameters: parameters,
+            raw_header: vec![],
         },
     )(s)
 }
@@ -692,7 +705,7 @@ pub fn multi_body_parser(s: &[u8]) -> IResult<&[u8], MultiBody> {
 #[cfg(test)]
 mod tests {
     use std::vec;
-    use crate::preparser;
+    use crate::{preparser, sequence::Sequence};
     use super::*;
 
     #[test]
@@ -1248,6 +1261,7 @@ mod tests {
                         value: b"----=_Part_526379_2891879.1572458037114".to_vec()
                     }]
                 },
+                raw_header: vec![]
             })
         );
         assert_eq!(body_parser(br#"(("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL)"#).unwrap().1,
@@ -1295,6 +1309,7 @@ mod tests {
                         value: b"===============1522363357941492443==".to_vec()
                     }]
                 },
+                raw_header: vec![],
             })
         );
         assert_eq!(body_parser(br#"((("text" "plain" ("charset" "GB2312") NIL NIL "base64" 84 2 NIL NIL NIL NIL)("text" "html" ("charset" "GB2312") NIL NIL "quoted-printable" 629 8 NIL NIL NIL NIL) "alternative" ("boundary" "----=_002_NextPart034528600178_=----") NIL NIL NIL)("application" "octet-stream" ("name" "FB679764.tar") NIL NIL "base64" 664200 NIL ("attachment" ("filename" "FB679764.tar")) NIL NIL) "mixed" ("boundary" "----=_001_NextPart655111288810_=----") NIL NIL NIL)"#).unwrap().1,
@@ -1377,6 +1392,7 @@ mod tests {
                             value: b"----=_002_NextPart034528600178_=----".to_vec()
                         }]
                     },
+                    raw_header: vec![]
                 }),
                 Body::Single(SingleBody {
                     content_type: ContentTypeHeaderField {
@@ -1422,7 +1438,8 @@ mod tests {
                     attribute: b"boundary".to_vec(),
                     value: b"----=_001_NextPart655111288810_=----".to_vec()
                 }] 
-            } })
+            },
+                raw_header: vec![] })
         );
     }
     #[test]
@@ -1510,7 +1527,9 @@ mod tests {
     }
     #[test]
     fn test_body_get_text() {
-        let multi_body = body_parser(br#"((("text" "plain" ("charset" "GB2312") NIL NIL "base64" 84 2 NIL NIL NIL NIL)("text" "html" ("charset" "GB2312") NIL NIL "quoted-printable" 629 8 NIL NIL NIL NIL) "alternative" ("boundary" "----=_002_NextPart034528600178_=----") NIL NIL NIL)("application" "octet-stream" ("name" "FB679764.tar") NIL NIL "base64" 664200 NIL ("attachment" ("filename" "FB679764.tar")) NIL NIL) "mixed" ("boundary" "----=_001_NextPart655111288810_=----") NIL NIL NIL)"#).unwrap().1;
+        let mut multi_body = body_parser(br#"((("text" "plain" ("charset" "GB2312") NIL NIL "base64" 84 2 NIL NIL NIL NIL)("text" "html" ("charset" "GB2312") NIL NIL "quoted-printable" 629 8 NIL NIL NIL NIL) "alternative" ("boundary" "----=_002_NextPart034528600178_=----") NIL NIL NIL)("application" "octet-stream" ("name" "FB679764.tar") NIL NIL "base64" 664200 NIL ("attachment" ("filename" "FB679764.tar")) NIL NIL) "mixed" ("boundary" "----=_001_NextPart655111288810_=----") NIL NIL NIL)"#).unwrap().1;
+        multi_body.set_data(Sequence::new(b"1.1").unwrap(), b"This is TEST".to_vec());
+        multi_body.set_data(Sequence::new(b"1.2").unwrap(), b"I am coming!!!!".to_vec());
         println!("{:?}", multi_body.get_text());
     }
 }
