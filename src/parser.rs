@@ -568,6 +568,17 @@ impl Body {
             }
         }
     }
+
+    pub fn set_header(&mut self, data: Vec<u8>) {
+        match self {
+            Body::Single(body) => {
+                body.raw_header = data;
+            }
+            Body::Multi(body) => {
+                body.raw_header = data;
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
