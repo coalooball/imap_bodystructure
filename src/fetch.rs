@@ -23,7 +23,7 @@ pub fn uid_fetch_body_parser(s: &[u8]) -> IResult<&[u8], UidFetch> {
             tag(b" "),
             tag_no_case(b"UID FETCH "),
             digit1,
-            tag(" BODY"),
+            tag_no_case(" BODY"),
             opt(tag_no_case(b".PEEK")),
             delimited(
                 tag(b"["),
@@ -55,6 +55,16 @@ mod tests {
                 sequence: Sequence::new(b"1.1").unwrap(),
                 uid: b"696".to_vec()
             }
-        )
+        );
+        let result2 = uid_fetch_body_parser(b"a5 uid fetch 303416 body.peek[1.1]")
+            .unwrap()
+            .1;
+        assert_eq!(
+            result2,
+            UidFetch {
+                sequence: Sequence::new(b"1.1").unwrap(),
+                uid: b"303416".to_vec()
+            }
+        );
     }
 }
