@@ -1,4 +1,4 @@
-fn ascii_lowercase_equal(vec1: &[u8], vec2: &[u8]) -> bool {
+pub fn ascii_lowercase_equal(vec1: &[u8], vec2: &[u8]) -> bool {
     vec1.iter()
         .map(|&b| b.to_ascii_lowercase())
         .eq(vec2.iter().map(|&b| b.to_ascii_lowercase()))
