@@ -12,7 +12,7 @@ pub fn find_all_bodystructure_with_uid(s: &mut Vec<u8>) -> HashMap<Vec<u8>, pars
             continue;
         }
         let bodystructure_text = extractor::extract_bodystructure(response);
-        if let Ok((_, body_text_within_parentheses)) = parser::head_bodystructure(&bodystructure_text) {
+        if let Ok((body_text_within_parentheses, _)) = parser::head_bodystructure(&bodystructure_text) {
             let body_result = parser::body_parser(body_text_within_parentheses);
             match body_result {
                 Ok((_, body)) => {
