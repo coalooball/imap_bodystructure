@@ -1,12 +1,12 @@
 use crate::sequence::{self, Sequence};
 use nom::{
-    bytes::complete::{tag, tag_no_case, take_while},
+    bytes::complete::{tag, tag_no_case, take_until, take_while},
     character::{
         complete::{alphanumeric1, digit1},
         is_digit,
     },
     combinator::{map, opt},
-    sequence::{delimited, tuple},
+    sequence::{delimited, terminated, tuple},
     IResult,
 };
 
@@ -167,6 +167,27 @@ pub fn extract_bodystructures(origin_vec: &Vec<u8>) -> Vec<Vec<u8>> {
     bodystructures
 }
 
+pub fn extract_fetch_respone_main_context_parser(s: &[u8]) -> IResult<&[u8], Vec<u8>> {
+    map(
+        delimited(
+            tag(b"*"),
+            extract_fetch_respone_main_context_parser_0,
+            tag(b"\r\n)\r\n"),
+        ),
+        |x: &[u8]| x.to_vec(),
+    )(s)
+}
+
+fn extract_fetch_respone_main_context_parser_0(s: &[u8]) -> IResult<&[u8], &[u8]> {
+    map(
+        tuple((
+            terminated(take_until("\r\n"), tag(b"\r\n")),
+            take_until("\r\n)\r\n"),
+        )),
+        |(_, x)| x,
+    )(s)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -274,5 +295,21 @@ mod tests {
             br#"BODYSTRUCTURE (("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL)"#.to_vec(),
             br#"BODYSTRUCTURE (("text" "html" ("charset" "utf-8") NIL NIL "base64" 54 1 NIL NIL NIL NIL)("application" "octet-stream" NIL NIL NIL "base64" 1336 NIL ("attachment" ("filename*" "utf-8''%E5%85%AC%E6%B0%91%E6%95%B0%E6%8D%AE.txt.zip")) NIL NIL) "mixed" ("boundary" "===============6973775584883558730==") NIL NIL NIL)"#.to_vec()
             ])
+    }
+    #[test]
+    fn test_extract_fetch_respone_main_context_parser() {
+        let text = b"* 174 FETCH (UID 669 BODY[1] {78} \r\nNzU5YjI1NmExYjRjNTkwYyA8YnI+5L2g5aW977yaPGJyPiAgICDor7fmn6XmlLbpmYTku7bjgII=\r\n)\r\n66 OK Fetch completed (0.004 + 0.000 + 0.003 secs).";
+        assert_eq!(
+            extract_fetch_respone_main_context_parser(text).unwrap().1,
+            b"NzU5YjI1NmExYjRjNTkwYyA8YnI+5L2g5aW977yaPGJyPiAgICDor7fmn6XmlLbpmYTku7bjgII="
+        )
+    }
+    #[test]
+    fn test_extract_fetch_respone_main_context_parser_0() {
+        let text = b"174 FETCH (UID 669 BODY[1] {78} \r\nNzU5YjI1NmExYjRjNTkwYyA8\r\n)\r\n";
+        assert_eq!(
+            extract_fetch_respone_main_context_parser_0(text).unwrap().1,
+            b"NzU5YjI1NmExYjRjNTkwYyA8"
+        )
     }
 }

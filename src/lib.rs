@@ -105,6 +105,5 @@
 pub mod parser;
 // Get new SequenceNumbers
 pub mod sequence;
-pub mod preparser;
 pub mod extractor;
 pub mod response;
