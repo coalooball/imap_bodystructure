@@ -85,8 +85,18 @@ pub fn split_multi_fetch_response_parser(
     include_first_line: bool,
 ) -> IResult<&[u8], Vec<Vec<u8>>> {
     match include_first_line {
-        true => map(many1(extract_fetch_respone_all_context_parser), |x| x)(s),
-        false => map(many1(extract_fetch_respone_main_context_parser), |x| x)(s),
+        true => map(
+            many1(map(extract_fetch_respone_all_context_parser, |x| {
+                x.to_vec()
+            })),
+            |x| x,
+        )(s),
+        false => map(
+            many1(map(extract_fetch_respone_main_context_parser, |x| {
+                x.to_vec()
+            })),
+            |x| x,
+        )(s),
     }
 }
 
@@ -133,21 +143,22 @@ pub fn extract_bodystructure(origin_vec: &Vec<u8>) -> Vec<u8> {
     bodystructure
 }
 
-pub fn extract_fetch_respone_all_context_parser(s: &[u8]) -> IResult<&[u8], Vec<u8>> {
-    map(
-        delimited(tag(b"*"), take_until("\r\n)\r\n"), tag(b"\r\n)\r\n")),
-        |x: &[u8]| x.to_vec(),
-    )(s)
+pub fn extract_fetch_respone_all_context_parser(s: &[u8]) -> IResult<&[u8], &[u8]> {
+    delimited(tag(b"*"), take_until("\r\n)\r\n"), tag(b"\r\n)\r\n"))(s)
 }
 
-pub fn extract_fetch_respone_main_context_parser(s: &[u8]) -> IResult<&[u8], Vec<u8>> {
-    map(
-        delimited(
-            tag(b"*"),
-            extract_fetch_respone_main_context_parser_0,
-            tag(b"\r\n)\r\n"),
-        ),
-        |x: &[u8]| x.to_vec(),
+pub fn extract_fetch_respone_all_context(s: &[u8]) -> Option<&[u8]> {
+    match extract_fetch_respone_all_context_parser(s) {
+        Ok((_, x)) => Some(x),
+        Err(_) => None,
+    }
+}
+
+pub fn extract_fetch_respone_main_context_parser(s: &[u8]) -> IResult<&[u8], &[u8]> {
+    delimited(
+        tag(b"*"),
+        extract_fetch_respone_main_context_parser_0,
+        tag(b"\r\n)\r\n"),
     )(s)
 }
 
@@ -159,6 +170,13 @@ fn extract_fetch_respone_main_context_parser_0(s: &[u8]) -> IResult<&[u8], &[u8]
         )),
         |(_, x)| x,
     )(s)
+}
+
+pub fn extract_fetch_respone_main_context(s: &[u8]) -> Option<&[u8]> {
+    match extract_fetch_respone_main_context_parser(s) {
+        Ok((_, x)) => Some(x),
+        Err(_) => None,
+    }
 }
 
 #[cfg(test)]
@@ -274,9 +292,27 @@ mod tests {
     }
     #[test]
     fn test_fetch_all_body() {
-        assert_eq!(fetch_all_body_parser(b"123 FETCH 3456 body[]").unwrap().1, ());
-        assert_eq!(fetch_all_body_parser(b"123 UID FETCH 3456 body[]").unwrap().1, ());
-        assert_eq!(fetch_all_body_parser(b"123 FETCH 3456 body.peek[]").unwrap().1, ());
-        assert_eq!(fetch_all_body_parser(b"123 UID FETCH 3456 body.peek[]").unwrap().1, ());
+        assert_eq!(
+            fetch_all_body_parser(b"123 FETCH 3456 body[]").unwrap().1,
+            ()
+        );
+        assert_eq!(
+            fetch_all_body_parser(b"123 UID FETCH 3456 body[]")
+                .unwrap()
+                .1,
+            ()
+        );
+        assert_eq!(
+            fetch_all_body_parser(b"123 FETCH 3456 body.peek[]")
+                .unwrap()
+                .1,
+            ()
+        );
+        assert_eq!(
+            fetch_all_body_parser(b"123 UID FETCH 3456 body.peek[]")
+                .unwrap()
+                .1,
+            ()
+        );
     }
 }
