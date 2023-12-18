@@ -17,6 +17,21 @@ pub struct UidFetch {
     pub sequence: sequence::Sequence,
 }
 
+pub fn fetch_all_body_parser(s: &[u8]) -> IResult<&[u8], ()> {
+    map(
+        tuple((
+            alphanumeric1,
+            opt(tag_no_case(b" UID")),
+            tag_no_case(b" FETCH "),
+            digit1,
+            tag_no_case(" BODY"),
+            opt(tag_no_case(b".PEEK")),
+            tag(b"[]"),
+        )),
+        |_| (),
+    )(s)
+}
+
 pub fn uid_fetch_body_parser(s: &[u8]) -> IResult<&[u8], UidFetch> {
     map(
         tuple((
@@ -256,5 +271,12 @@ mod tests {
             extract_fetch_respone_all_context_parser(text).unwrap().1,
             b" 174 FETCH (UID 669 BODY[1] {78} \r\nNzU5YjI1NmExYjRjNTkwYyA8"
         )
+    }
+    #[test]
+    fn test_fetch_all_body() {
+        assert_eq!(fetch_all_body_parser(b"123 FETCH 3456 body[]").unwrap().1, ());
+        assert_eq!(fetch_all_body_parser(b"123 UID FETCH 3456 body[]").unwrap().1, ());
+        assert_eq!(fetch_all_body_parser(b"123 FETCH 3456 body.peek[]").unwrap().1, ());
+        assert_eq!(fetch_all_body_parser(b"123 UID FETCH 3456 body.peek[]").unwrap().1, ());
     }
 }

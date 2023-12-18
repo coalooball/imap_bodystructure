@@ -45,6 +45,13 @@ fn delete_first_line(data: &[u8]) -> &[u8] {
     }
 }
 
+pub fn is_fetch_all_body(s: &[u8]) -> bool {
+    match extractor::fetch_all_body_parser(s) {
+        Ok(_) => true,
+        Err(_) => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -147,5 +154,11 @@ mod tests {
             }),
         );
         assert_eq!(r3, h3);
+    }
+    #[test]
+    fn test_is_fetch_all_body() {
+        assert_eq!(is_fetch_all_body(b"123 FETCH 3456 body[]"), true);
+        assert_eq!(is_fetch_all_body(b"123 UID FETCH 3456 body.peek[]"), true);
+        assert_eq!(is_fetch_all_body(b"123 UID FETCH 3456 body[1.1]"), false);
     }
 }
