@@ -54,7 +54,7 @@
 //! # use imap_bodystructure::parser::*;
 //! # use std::collections::HashMap;
 //! 
-//! let mut text = b"* 154 FETCH (UID 649 FLAGS () RFC822.SIZE 2394 INTERNALDATE \"05-Dec-2023 06:16:58 +0000\" BODYSTRUCTURE ((\"text\" \"html\" (\"charset\" \"utf-8\") NIL NIL \"base64\" 1188 16 NIL NIL NIL NIL) \"mixed\" (\"boundary\" \"===============1522363357941492443==\") NIL NIL NIL) BODY[HEADER.FIELDS (DATE SUBJECT FROM SENDER REPLY-TO TO CC BCC MESSAGE-ID REFERENCES IN-REPLY-TO X-MAILMASTER-SHOWONERCPT X-CUSTOM-MAIL-MASTER-SENT-ID DISPOSITION-NOTIFICATION-TO X-CM-CTRLMSGS)] {181}\r\nSubject: =?utf-8?b?5L2g5aW9IDBiMGZiYjZkYmFmM2FmYmIgenFhLWVtYWls5rWL6K+V?=\r\nFrom: liutianyu@nextcloud.games\r\nTo: shenzongxu@nextcloud.games\r\nDate: Tue, 05 Dec 2023 06:16:58 -0000\r\n\r\n)".to_vec();
+//! let mut text = b"* 154 FETCH (UID 649 FLAGS () RFC822.SIZE 2394 INTERNALDATE \"05-Dec-2023 06:16:58 +0000\" BODYSTRUCTURE ((\"text\" \"html\" (\"charset\" \"utf-8\") NIL NIL \"base64\" 1188 16 NIL NIL NIL NIL) \"mixed\" (\"boundary\" \"===============1522363357941492443==\") NIL NIL NIL) BODY[HEADER.FIELDS (DATE SUBJECT FROM SENDER REPLY-TO TO CC BCC MESSAGE-ID REFERENCES IN-REPLY-TO X-MAILMASTER-SHOWONERCPT X-CUSTOM-MAIL-MASTER-SENT-ID DISPOSITION-NOTIFICATION-TO X-CM-CTRLMSGS)] {181}\r\nSubject: =?utf-8?b?5L2g5aW9IDBiMGZiYjZkYmFmM2FmYmIgenFhLWVtYWls5rWL6K+V?=\r\nFrom: liutianyu@nextcloud.games\r\nTo: shenzongxu@nextcloud.games\r\nDate: Tue, 05 Dec 2023 06:16:58 -0000\r\n\r\n)\r\n".to_vec();
 //! let r = find_all_bodystructure_with_uid(&mut text, true);
 //! let mut h: HashMap<Vec<u8>, Body> = HashMap::new();
 //! h.insert(
@@ -96,7 +96,7 @@
 //!                 value: b"===============1522363357941492443==".to_vec(),
 //!             }],
 //!         },
-//!         raw_header: b"Subject: =?utf-8?b?5L2g5aW9IDBiMGZiYjZkYmFmM2FmYmIgenFhLWVtYWls5rWL6K+V?=\r\nFrom: liutianyu@nextcloud.games\r\nTo: shenzongxu@nextcloud.games\r\nDate: Tue, 05 Dec 2023 06:16:58 -0000\r\n\r\n".to_vec(),
+//!         raw_header: b"Subject: =?utf-8?b?5L2g5aW9IDBiMGZiYjZkYmFmM2FmYmIgenFhLWVtYWls5rWL6K+V?=\r\nFrom: liutianyu@nextcloud.games\r\nTo: shenzongxu@nextcloud.games\r\nDate: Tue, 05 Dec 2023 06:16:58 -0000\r\n".to_vec(),
 //!     }),
 //! );
 //! assert_eq!(r, h);

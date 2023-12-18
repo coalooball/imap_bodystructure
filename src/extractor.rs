@@ -6,6 +6,7 @@ use nom::{
         is_digit,
     },
     combinator::{map, opt},
+    multi::many1,
     sequence::{delimited, terminated, tuple},
     IResult,
 };
@@ -64,24 +65,14 @@ pub fn find_uid_in_response(origin_vec: &Vec<u8>) -> Vec<u8> {
     uid
 }
 
-pub fn split_multi_fetch_response(origin_vec: &mut Vec<u8>) -> Vec<Vec<u8>> {
-    let mut responses: Vec<Vec<u8>> = vec![];
-    if origin_vec.len() < 5 {
-        responses.push(origin_vec.to_owned());
-        return responses;
+pub fn split_multi_fetch_response_parser(
+    s: &[u8],
+    include_first_line: bool,
+) -> IResult<&[u8], Vec<Vec<u8>>> {
+    match include_first_line {
+        true => map(many1(extract_fetch_respone_all_context_parser), |x| x)(s),
+        false => map(many1(extract_fetch_respone_main_context_parser), |x| x)(s),
     }
-    let iter = origin_vec.windows(4);
-    let mut left_idx = 0;
-    let mut right_idx = 0;
-    for i in iter {
-        right_idx += 1;
-        if i == b")\r\n*".as_slice() {
-            responses.push(origin_vec[left_idx..right_idx].to_vec());
-            left_idx = right_idx;
-        }
-    }
-    responses.push(origin_vec[left_idx..].to_vec());
-    return responses;
 }
 
 pub fn ascii_lowercase_equal(vec1: &[u8], vec2: &[u8]) -> bool {
@@ -127,44 +118,11 @@ pub fn extract_bodystructure(origin_vec: &Vec<u8>) -> Vec<u8> {
     bodystructure
 }
 
-pub fn extract_bodystructures(origin_vec: &Vec<u8>) -> Vec<Vec<u8>> {
-    let mut bodystructures: Vec<Vec<u8>> = Vec::new();
-    let mut token: Vec<u8> = Vec::new();
-    let mut recording = false;
-    let mut brackets_count = 0;
-    let mut current_bodystructure: Vec<u8> = Vec::new();
-
-    for &i in origin_vec {
-        if recording {
-            current_bodystructure.push(i);
-            if i == b'(' {
-                brackets_count += 1;
-            } else if i == b')' {
-                brackets_count -= 1;
-                if brackets_count == 0 {
-                    bodystructures.push(current_bodystructure.clone());
-                    current_bodystructure.clear();
-                    recording = false;
-                }
-            }
-        } else {
-            if i.is_ascii_alphabetic() {
-                token.push(i);
-            } else {
-                if ascii_lowercase_equal(&token, b"BODYSTRUCTURE") {
-                    recording = true;
-                    current_bodystructure.extend_from_slice(b"BODYSTRUCTURE");
-                    current_bodystructure.push(i);
-                    if i == b'(' {
-                        brackets_count += 1;
-                    }
-                }
-                token.clear();
-            }
-        }
-    }
-
-    bodystructures
+pub fn extract_fetch_respone_all_context_parser(s: &[u8]) -> IResult<&[u8], Vec<u8>> {
+    map(
+        delimited(tag(b"*"), take_until("\r\n)\r\n"), tag(b"\r\n)\r\n")),
+        |x: &[u8]| x.to_vec(),
+    )(s)
 }
 
 pub fn extract_fetch_respone_main_context_parser(s: &[u8]) -> IResult<&[u8], Vec<u8>> {
@@ -240,11 +198,11 @@ mod tests {
     }
     #[test]
     fn test_split_multi_fetch_response() {
-        let mut text = b"111)\r\n* feeffeef".to_vec();
-        let split_text1 = split_multi_fetch_response(&mut text);
+        let text = b"* fetch0 something\r\n t1 \r\n)\r\n* fetch1 \r\n t2 \r\n)\r\n* fetch2\r\n t3 \r\n)\r\n Ok ...";
+        let split_text1 = split_multi_fetch_response_parser(text, false).unwrap().1;
         assert_eq!(
             split_text1,
-            vec![b"111)".to_vec(), b"\r\n* feeffeef".to_vec()]
+            vec![b" t1 ".to_vec(), b" t2 ".to_vec(), b" t3 ".to_vec()]
         )
     }
 
@@ -276,27 +234,6 @@ mod tests {
         assert!(ascii_lowercase_equal(str2, str3));
     }
     #[test]
-    fn test_extract_bodystructures() {
-        let text = br#"* 154 FETCH (UID 649 FLAGS () RFC822.SIZE 2394 INTERNALDATE "05-Dec-2023 06:16:58 +0000" BODYSTRUCTURE (("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL) BODY[HEADER.FIELDS (DATE SUBJECT FROM SENDER REPLY-TO TO CC BCC MESSAGE-ID REFERENCES IN-REPLY-TO X-MAILMASTER-SHOWONERCPT X-CUSTOM-MAIL-MASTER-SENT-ID DISPOSITION-NOTIFICATION-TO X-CM-CTRLMSGS)] {181}
-        Subject: =?utf-8?b?5L2g5aW9IDBiMGZiYjZkYmFmM2FmYmIgenFhLWVtYWls5rWL6K+V?=
-        From: liutianyu@nextcloud.games
-        To: shenzongxu@nextcloud.games
-        Date: Tue, 05 Dec 2023 06:16:58 -0000
-        
-        )
-        * 155 FETCH (UID 650 FLAGS () RFC822.SIZE 2869 INTERNALDATE "05-Dec-2023 06:16:58 +0000" BODYSTRUCTURE (("text" "html" ("charset" "utf-8") NIL NIL "base64" 54 1 NIL NIL NIL NIL)("application" "octet-stream" NIL NIL NIL "base64" 1336 NIL ("attachment" ("filename*" "utf-8''%E5%85%AC%E6%B0%91%E6%95%B0%E6%8D%AE.txt.zip")) NIL NIL) "mixed" ("boundary" "===============6973775584883558730==") NIL NIL NIL) BODY[HEADER.FIELDS (DATE SUBJECT FROM SENDER REPLY-TO TO CC BCC MESSAGE-ID REFERENCES IN-REPLY-TO X-MAILMASTER-SHOWONERCPT X-CUSTOM-MAIL-MASTER-SENT-ID DISPOSITION-NOTIFICATION-TO X-CM-CTRLMSGS)] {225}
-        Subject: =?utf-8?b?6ZmE5Lu25pC65bimemlw5Y6L57ypdHh055qE5YWs5rCR5pWw5o2uIDBlZjBmZTU5OTNiYTdkNmEgenFhLWVtYWls5rWL6K+V?=
-        From: liutianyu@nextcloud.games
-        To: shenzongxu@nextcloud.games
-        Date: Tue, 05 Dec 2023 06:16:58 -0000
-        
-        )"#.to_vec();
-        assert_eq!(extract_bodystructures(&text), vec![
-            br#"BODYSTRUCTURE (("text" "html" ("charset" "utf-8") NIL NIL "base64" 1188 16 NIL NIL NIL NIL) "mixed" ("boundary" "===============1522363357941492443==") NIL NIL NIL)"#.to_vec(),
-            br#"BODYSTRUCTURE (("text" "html" ("charset" "utf-8") NIL NIL "base64" 54 1 NIL NIL NIL NIL)("application" "octet-stream" NIL NIL NIL "base64" 1336 NIL ("attachment" ("filename*" "utf-8''%E5%85%AC%E6%B0%91%E6%95%B0%E6%8D%AE.txt.zip")) NIL NIL) "mixed" ("boundary" "===============6973775584883558730==") NIL NIL NIL)"#.to_vec()
-            ])
-    }
-    #[test]
     fn test_extract_fetch_respone_main_context_parser() {
         let text = b"* 174 FETCH (UID 669 BODY[1] {78} \r\nNzU5YjI1NmExYjRjNTkwYyA8YnI+5L2g5aW977yaPGJyPiAgICDor7fmn6XmlLbpmYTku7bjgII=\r\n)\r\n66 OK Fetch completed (0.004 + 0.000 + 0.003 secs).";
         assert_eq!(
@@ -310,6 +247,14 @@ mod tests {
         assert_eq!(
             extract_fetch_respone_main_context_parser_0(text).unwrap().1,
             b"NzU5YjI1NmExYjRjNTkwYyA8"
+        )
+    }
+    #[test]
+    fn test_extract_fetch_respone_all_context_parser() {
+        let text = b"* 174 FETCH (UID 669 BODY[1] {78} \r\nNzU5YjI1NmExYjRjNTkwYyA8\r\n)\r\n";
+        assert_eq!(
+            extract_fetch_respone_all_context_parser(text).unwrap().1,
+            b" 174 FETCH (UID 669 BODY[1] {78} \r\nNzU5YjI1NmExYjRjNTkwYyA8"
         )
     }
 }
