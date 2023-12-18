@@ -99,5 +99,5 @@ h.insert(
         raw_header: b"Subject: =?utf-8?b?5L2g5aW9IDBiMGZiYjZkYmFmM2FmYmIgenFhLWVtYWls5rWL6K+V?=\r\nFrom: liutianyu@nextcloud.games\r\nTo: shenzongxu@nextcloud.games\r\nDate: Tue, 05 Dec 2023 06:16:58 -0000\r\n".to_vec(),
     }),
 );
-assert_eq!(r, h);
+assert_eq!(r, (b"".as_ref(), h));
 ```
