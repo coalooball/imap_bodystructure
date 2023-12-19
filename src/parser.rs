@@ -108,9 +108,9 @@ impl ContentTypeHeaderField {
         let mut result = b"Content-Type: ".to_vec();
         result.append(&mut self.ttype.get_content_type_text());
         for param in &self.parameters.list {
-            result.extend_from_slice(b"; ");
-            // result.extend_from_slice(b";\r\n");
-            // result.extend_from_slice(b"        ");
+            // result.extend_from_slice(b"; ");
+            result.extend_from_slice(b";\r\n");
+            result.extend_from_slice(b"        ");
             result.extend(param.get_content_type_text().iter());
         }
         result.extend_from_slice(b"\r\n");
@@ -842,8 +842,8 @@ mod tests {
             .1;
         assert_eq!(
             text.get_text(),
-            // b"Content-Type: text/html;\r\n        charset=\"utf-8\"\r\n"
-            b"Content-Type: text/html; charset=\"utf-8\"\r\n"
+            b"Content-Type: text/html;\r\n        charset=\"utf-8\"\r\n"
+            // b"Content-Type: text/html; charset=\"utf-8\"\r\n"
         );
         let text = content_type_header_field_parser(br#""application" "octet-stream" NIL"#)
             .unwrap()
@@ -1504,7 +1504,7 @@ mod tests {
         if let Body::Single(mut body) = body1 {
             body.set_data(b"This is a TEST.".to_vec());
             body.set_raw_header(b"Date: Fri, 24 Nov 2023 22:06:45 +0800\r\nFrom: shnetopt@esunny.cc\r\nTo: shenshiming@esunny.cc\r\nSubject: =?utf-8?B?5LiK5rW3572R57uc6L+Q57u06YOoLVphYmJpeOaVhemanA==?=".to_vec());
-            assert_eq!(body.get_text(), b"Date: Fri, 24 Nov 2023 22:06:45 +0800\r\nFrom: shnetopt@esunny.cc\r\nTo: shenshiming@esunny.cc\r\nSubject: =?utf-8?B?5LiK5rW3572R57uc6L+Q57u06YOoLVphYmJpeOaVhemanA==?=\r\nContent-Type: TEXT/PLAIN; CHARSET=\"utf-8\"\r\nContent-Transfer-Encoding: 8BIT\r\n\r\nThis is a TEST.\r\n");
+            assert_eq!(body.get_text(), b"Date: Fri, 24 Nov 2023 22:06:45 +0800\r\nFrom: shnetopt@esunny.cc\r\nTo: shenshiming@esunny.cc\r\nSubject: =?utf-8?B?5LiK5rW3572R57uc6L+Q57u06YOoLVphYmJpeOaVhemanA==?=\r\nContent-Type: TEXT/PLAIN;\r\n        CHARSET=\"utf-8\"\r\nContent-Transfer-Encoding: 8BIT\r\n\r\nThis is a TEST.\r\n");
         }
     }
     #[test]
