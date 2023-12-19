@@ -26,6 +26,7 @@ pub fn find_all_bodystructure_with_uid(
                 Ok((_, mut body)) => {
                     if set_header {
                         body.set_header(delete_first_line(&response).to_vec());
+                        body.set_header(b"MIME-Version: 1.0\r\n".to_vec());
                     }
                     tmp_hashmap.insert(uid, body);
                 }
@@ -150,7 +151,7 @@ mod tests {
                         value: b"===============1522363357941492443==".to_vec(),
                     }],
                 },
-                raw_header: b"Subject: =?utf-8?b?5L2g5aW9IDBiMGZiYjZkYmFmM2FmYmIgenFhLWVtYWls5rWL6K+V?=\r\nFrom: liutianyu@nextcloud.games\r\nTo: shenzongxu@nextcloud.games\r\nDate: Tue, 05 Dec 2023 06:16:58 -0000\r\n".to_vec(),
+                raw_header: b"Subject: =?utf-8?b?5L2g5aW9IDBiMGZiYjZkYmFmM2FmYmIgenFhLWVtYWls5rWL6K+V?=\r\nFrom: liutianyu@nextcloud.games\r\nTo: shenzongxu@nextcloud.games\r\nDate: Tue, 05 Dec 2023 06:16:58 -0000\r\nMIME-Version: 1.0\r\n".to_vec(),
             }),
         );
         assert_eq!(r3, (b"Ok".as_ref(), h3));
