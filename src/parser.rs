@@ -657,7 +657,7 @@ impl MultiBody {
             result.extend_from_slice(b"\r\n");
             result.extend_from_slice(b"--");
             result.append(&mut boundary.to_owned());
-            result.extend_from_slice(b"\r\n");
+            // result.extend_from_slice(b"\r\n");
             result.append(&mut part.get_text());
         }
         result.extend_from_slice(b"\r\n");

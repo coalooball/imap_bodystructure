@@ -1,6 +1,6 @@
 [package]
 name = "imap_bodystructure"
-version = "0.3.3"
+version = "0.3.4"
 license = "MIT OR Apache-2.0"
 edition = "2021"
 description = "Analyzing the BODYSTRUCTURE data stream within the IMAP protocol, based on Nom."
