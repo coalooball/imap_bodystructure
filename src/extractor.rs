@@ -1,14 +1,16 @@
 use crate::sequence::{self, Sequence};
 use nom::{
+    branch::alt,
     bytes::complete::{tag, tag_no_case, take_until, take_while},
     character::{
         complete::{alphanumeric1, digit1},
         is_digit,
     },
     combinator::{map, opt},
+    error::ErrorKind,
     multi::many1,
     sequence::{delimited, terminated, tuple},
-    IResult,
+    Err as NomErr, IResult,
 };
 
 #[derive(Debug, PartialEq)]
@@ -17,7 +19,33 @@ pub struct UidFetch {
     pub sequence: sequence::Sequence,
 }
 
-pub fn fetch_all_body_parser(s: &[u8]) -> IResult<&[u8], ()> {
+// https://stackoverflow.com/questions/35901547/how-can-i-find-a-subsequence-in-a-u8-slice
+// fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+//     haystack
+//         .windows(needle.len())
+//         .position(|window| window == needle)
+// }
+
+fn find_subsequence_case_insensitive(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack
+        .windows(needle.len())
+        .position(|window| window.eq_ignore_ascii_case(needle))
+}
+
+fn fetch_all_body_implicit_parser(s: &[u8]) -> IResult<&[u8], ()> {
+    match find_subsequence_case_insensitive(s, b"body[]") {
+        None => match find_subsequence_case_insensitive(s, b"body.peek[]") {
+            None => Err(NomErr::Error(nom::error::Error {
+                input: s,
+                code: ErrorKind::Tag,
+            })),
+            Some(pos) => Ok((&s[pos + 11..], ())),
+        },
+        Some(pos) => Ok((&s[pos + 6..], ())),
+    }
+}
+
+fn fetch_all_body_straightforward_parser(s: &[u8]) -> IResult<&[u8], ()> {
     map(
         tuple((
             alphanumeric1,
@@ -30,6 +58,13 @@ pub fn fetch_all_body_parser(s: &[u8]) -> IResult<&[u8], ()> {
         )),
         |_| (),
     )(s)
+}
+
+pub(crate) fn fetch_all_body_parser(s: &[u8]) -> IResult<&[u8], ()> {
+    alt((
+        fetch_all_body_straightforward_parser,
+        fetch_all_body_implicit_parser,
+    ))(s)
 }
 
 pub fn uid_fetch_body_parser(s: &[u8]) -> IResult<&[u8], UidFetch> {
@@ -293,17 +328,43 @@ mod tests {
     #[test]
     fn test_fetch_all_body() {
         assert_eq!(
-            fetch_all_body_parser(b"123 FETCH 3456 body[]").unwrap().1,
-            ()
-        );
-        assert_eq!(
-            fetch_all_body_parser(b"123 UID FETCH 3456 body[]")
+            fetch_all_body_straightforward_parser(b"123 FETCH 3456 body[]")
                 .unwrap()
                 .1,
             ()
         );
         assert_eq!(
-            fetch_all_body_parser(b"123 FETCH 3456 body.peek[]")
+            fetch_all_body_straightforward_parser(b"123 UID FETCH 3456 body[]")
+                .unwrap()
+                .1,
+            ()
+        );
+        assert_eq!(
+            fetch_all_body_straightforward_parser(b"123 FETCH 3456 body.peek[]")
+                .unwrap()
+                .1,
+            ()
+        );
+        assert_eq!(
+            fetch_all_body_straightforward_parser(b"123 UID FETCH 3456 body.peek[]")
+                .unwrap()
+                .1,
+            ()
+        );
+        assert_eq!(
+            fetch_all_body_implicit_parser(b"a1 FETCH 123 body[] haha")
+                .unwrap()
+                .0,
+            b" haha"
+        );
+        assert_eq!(
+            fetch_all_body_implicit_parser(b"a1 FETCH 123 body.peek[] haha")
+                .unwrap()
+                .0,
+            b" haha"
+        );
+        assert_eq!(
+            fetch_all_body_parser(b"a1 FETCH 123 body.peek[] haha")
                 .unwrap()
                 .1,
             ()
@@ -313,6 +374,23 @@ mod tests {
                 .unwrap()
                 .1,
             ()
+        );
+    }
+
+    #[test]
+    fn test_find_subsequence() {
+        assert_eq!(
+            find_subsequence_case_insensitive(b"qwertyuiop", b"tyu"),
+            Some(4)
+        );
+        assert_eq!(
+            find_subsequence_case_insensitive(b"qwertyuiop", b"asd"),
+            None
+        );
+        assert_eq!(find_subsequence_case_insensitive(b"qwe", b"asddsf"), None);
+        assert_eq!(
+            find_subsequence_case_insensitive(b"RETR SOME", b"some"),
+            Some(5)
         );
     }
 }

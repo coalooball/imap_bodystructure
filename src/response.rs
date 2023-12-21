@@ -161,5 +161,7 @@ mod tests {
         assert_eq!(is_fetch_all_body(b"123 FETCH 3456 body[]"), true);
         assert_eq!(is_fetch_all_body(b"123 UID FETCH 3456 body.peek[]"), true);
         assert_eq!(is_fetch_all_body(b"123 UID FETCH 3456 body[1.1]"), false);
+        assert_eq!(is_fetch_all_body(b"123 UID FETCH 3456 (UID BODY[])"), true);
+        assert_eq!(is_fetch_all_body(b"123 UID FETCH 3456 (UID BODY.Peek[])"), true);
     }
 }
